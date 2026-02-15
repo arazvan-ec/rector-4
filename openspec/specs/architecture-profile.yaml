@@ -103,6 +103,29 @@ solid_relevance:
     when_violated: "Extract interface, inject abstraction"
     reference_good: "snaapi-develop/src/Orchestrator/OrchestratorChain.php"
 
+resilience_strategy:
+  pattern: "circuit-breaker-per-service"
+  spec_ref: "openspec/specs/architectural-constraints/resilience-strategy.yaml"
+  description: |
+    Each Aggregator sub-service implements degradation based on service criticality.
+    CRITICAL services (editorial) fail the request. LOW services (multimedia, section,
+    journalist, tag, membership) degrade gracefully with null/empty and logged warnings.
+  critical_services: ["editorial-client"]
+  low_services: ["multimedia-client", "section-client", "journalist-client", "tag-client", "membership-client", "widget-client"]
+
+cache_strategy:
+  pattern: "hybrid-3-level"
+  spec_ref: "openspec/specs/architectural-constraints/cache-strategy.yaml"
+  description: |
+    Level 1: Varnish/CDN (existing). Level 2: httplug + Couchbase (transparent HTTP cache
+    for all external client calls). Level 3: Circuit breaker fallback (degradation when
+    httplug has no cache AND service is down).
+  invalidation: "reactive-amqp"
+  invalidation_description: |
+    Microservices publish AMQP events on content change. SNAAPI Messenger consumers
+    invalidate httplug Couchbase keys and send Varnish BAN requests.
+  existing_infrastructure: ["symfony-messenger", "amqp-rabbitmq", "PurgeEditorialHandler"]
+
 conventions:
   naming:
     classes: "PascalCase"

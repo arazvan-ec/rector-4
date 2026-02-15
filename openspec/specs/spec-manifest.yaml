@@ -11,7 +11,7 @@ manifest:
     api_contracts: 1
     business_rules: 1
     architectural_constraints: 2
-    total_specs: 4
+    total_specs: 6
 
   entities: []
 
@@ -38,6 +38,16 @@ manifest:
       constraints_count: 6
       type: "mandatory"
       last_updated: "2026-02-15T22:30:00Z"
+    - category: "resilience-strategy"
+      file: "architectural-constraints/resilience-strategy.yaml"
+      constraints_count: 5
+      type: "mandatory"
+      last_updated: "2026-02-15T23:00:00Z"
+    - category: "cache-strategy"
+      file: "architectural-constraints/cache-strategy.yaml"
+      constraints_count: 6
+      type: "mandatory"
+      last_updated: "2026-02-15T23:00:00Z"
 
   extraction_config:
     extract_specs: true

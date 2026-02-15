@@ -33,7 +33,7 @@ A clean two-layer architecture where:
 4. This pattern becomes the **mandatory product standard** for all future features
 
 ### Appetite
-5 vertical slices, each independently deliverable and testable.
+8 vertical slices, each independently deliverable and testable.
 
 ### Non-Goals
 - Changing the external API contract (response format must remain identical)
@@ -60,6 +60,10 @@ A clean two-layer architecture where:
 | R9 | Pattern must be documented as mandatory product standard | Problem | Must-have |
 | R10 | Aggregator must NOT import from DataTransformer/ | Constraint | Must-have |
 | R11 | Presenter must NOT import from Client/Http | Constraint | Must-have |
+| R12 | Aggregator sub-services must implement circuit breaker with criticality-based fallback | Problem | Must-have |
+| R13 | All external HTTP calls must go through httplug cache (Couchbase backend) | Problem | Must-have |
+| R14 | Cache invalidation must be reactive via AMQP events (not TTL-only) | Problem | Must-have |
+| R15 | Service criticality (CRITICAL vs LOW) must determine degradation behavior | Constraint | Must-have |
 
 ---
 
@@ -107,6 +111,10 @@ Sub-DTOs: `ResolvedInsertedNews`, `ResolvedRecommendedEditorial` for typed neste
 | R9 | - | - | - | - | - | - | GREEN: Slice 5 documents as standard |
 | R10 | - | ✅ | - | - | - | - | GREEN: Aggregator only imports clients |
 | R11 | - | - | ✅ | ✅ | - | - | GREEN: Presenter only imports transformers |
+| R12 | - | ✅ | - | - | - | - | GREEN: Sub-services have try/catch with criticality |
+| R13 | - | - | - | - | - | - | GREEN: httplug config (infra, not in slices A1-A6) |
+| R14 | - | - | - | - | - | - | GREEN: AMQP handlers (infra, separate slice) |
+| R15 | - | ✅ | - | - | - | - | GREEN: ServiceCriticality enum + per-service policy |
 
 **All requirements GREEN. Shape A approved.**
 
@@ -138,7 +146,28 @@ Sub-DTOs: `ResolvedInsertedNews`, `ResolvedRecommendedEditorial` for typed neste
 **Tests**: Full suite passes, API responses identical
 **Risk**: Medium-High (integration point, backward compatibility critical)
 
-### Slice 5: Document as product standard
+### Slice 5: Resilience - Circuit Breaker + ServiceCriticality
+**Demo**: Each Aggregator sub-service degrades gracefully based on service criticality.
+**New files**: `Infrastructure/Enum/ServiceCriticality.php`, tests for degradation scenarios
+**Modified**: All Aggregator/Service/ resolvers to include try/catch with criticality policy
+**Tests**: Unit tests for each degradation scenario (CRITICAL fail, LOW degrade)
+**Risk**: Medium (must preserve existing behavior for happy path)
+
+### Slice 6: httplug Cache + Couchbase Configuration
+**Demo**: All external HTTP calls cached transparently via httplug.
+**New/Modified**: `config/packages/httplug.yaml`, Couchbase PSR-6 adapter config
+**Tests**: Integration test verifying cache hit/miss behavior
+**Risk**: Medium (infrastructure change, needs testing with all clients)
+
+### Slice 7: Reactive Invalidation - AMQP Handlers
+**Demo**: Content changes in microservices trigger cache invalidation in SNAAPI.
+**New files**: `Message/SectionUpdated.php`, `MessageHandler/SectionUpdatedHandler.php`, etc.
+**Modified**: `config/packages/messenger.yaml` (routing for new events)
+**Tests**: Unit tests for each handler verifying correct cache key invalidation
+**Risk**: Low (additive, uses existing Messenger infrastructure)
+**Reference**: Existing `PurgeEditorialHandler` as implementation pattern
+
+### Slice 8: Document as product standard
 **Demo**: Pattern documented in openspec/, CLAUDE.md, architecture profile.
 **New/Modified**: `aggregator-presenter-pattern.yaml`, `CLAUDE.md`, `architecture-profile.yaml`, `project-profile.md`
 **Risk**: Low (documentation only)

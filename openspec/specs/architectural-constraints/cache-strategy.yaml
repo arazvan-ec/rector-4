@@ -1,0 +1,179 @@
+# Architectural Constraint: Cache Strategy
+# Created: 2026-02-15
+# Type: MANDATORY - Hybrid cache with reactive invalidation via AMQP
+
+architectural_constraint:
+  name: "Hybrid Cache Strategy with Reactive Invalidation"
+  type: "mandatory"
+  status: "active"
+  created_at: "2026-02-15"
+  description: |
+    SNAAPI uses a 3-level cache architecture to minimize external service calls
+    while keeping data fresh via reactive invalidation through AMQP events.
+
+  cache_levels:
+    - level: 1
+      name: "Varnish/CDN"
+      scope: "HTTP responses from SNAAPI to clients"
+      status: "existing"
+      description: |
+        Already in place. Caches SNAAPI API responses at the HTTP level.
+        Invalidated via BAN requests from SNAAPI when content changes.
+      ttl: "Configured via Cache-Control headers (CacheControlSubscriber)"
+      invalidation: "Varnish BAN from AMQP handlers"
+
+    - level: 2
+      name: "httplug + Couchbase"
+      scope: "HTTP responses from microservices to SNAAPI"
+      status: "to-implement"
+      description: |
+        Transparent HTTP cache layer using httplug CachePlugin with Couchbase backend.
+        Single configuration covers ALL external client HTTP calls (editorial, section,
+        multimedia, journalist, tag, membership, widget).
+
+        This replaces per-client caching logic with a unified approach.
+      technology:
+        plugin: "php-http/cache-plugin"
+        backend: "Couchbase (via PSR-6 adapter)"
+        config_location: "config/packages/httplug.yaml"
+      features:
+        - "Transparent: clients don't know about caching"
+        - "Respects HTTP cache headers from microservices"
+        - "stale-if-error: returns stale cached response when service is down"
+        - "stale-while-revalidate: serves stale while refreshing in background"
+        - "Single config point: all clients cached uniformly"
+      ttl:
+        default: "300s (5 minutes)"
+        stale_if_error: "3600s (1 hour) - serve stale when service unavailable"
+        stale_while_revalidate: "60s"
+      invalidation: "Key-based invalidation from AMQP handlers"
+
+    - level: 3
+      name: "Circuit Breaker Fallback"
+      scope: "Aggregator sub-services when httplug has no cache AND service is down"
+      status: "to-implement"
+      description: |
+        When httplug cache misses AND the external service is unavailable,
+        the Aggregator sub-service degrades gracefully based on service criticality.
+        This is the last line of defense.
+
+        See: resilience-strategy.yaml for criticality levels and fallback behavior.
+      cross_reference: "architectural-constraints/resilience-strategy.yaml"
+
+  reactive_invalidation:
+    transport: "AMQP (RabbitMQ)"
+    framework: "Symfony Messenger"
+    status: "to-implement"
+    existing_reference: "PurgeEditorialHandler (already exists as pattern reference)"
+    description: |
+      Each microservice publishes domain events when content changes.
+      SNAAPI consumes these events and invalidates the relevant cache entries
+      at Level 2 (httplug Couchbase) and Level 1 (Varnish BAN).
+
+      This approach is MUCH more efficient than TTL-based expiration because:
+      - Only changed content is invalidated
+      - No mass recalculation of cached editorials
+      - Near real-time freshness for updated content
+
+    event_flow:
+      example: |
+        1. section-service updates "Deportes" (id: 42)
+        2. Publishes AMQP event: section.updated { id: 42 }
+        3. SNAAPI Messenger consumer receives event
+        4. Handler invalidates:
+           - httplug Couchbase key: GET /sections/42
+           - Varnish BAN: /editorial.*sectionId=42
+        5. Next request: httplug fetches fresh from section-service
+        6. Varnish fetches fresh from SNAAPI
+        7. Editorial content reflects updated section name
+
+    events:
+      - event: "editorial.updated"
+        publisher: "editorial-service"
+        handler: "App\\MessageHandler\\EditorialUpdatedHandler"
+        invalidates:
+          - "httplug key: GET /editorials/{id}"
+          - "Varnish BAN: /v1/editorials/{id}"
+
+      - event: "editorial.deleted"
+        publisher: "editorial-service"
+        handler: "App\\MessageHandler\\EditorialDeletedHandler"
+        invalidates:
+          - "httplug key: GET /editorials/{id}"
+          - "Varnish BAN: /v1/editorials/{id}"
+
+      - event: "section.updated"
+        publisher: "section-service"
+        handler: "App\\MessageHandler\\SectionUpdatedHandler"
+        invalidates:
+          - "httplug key: GET /sections/{id}"
+          - "Varnish BAN: /v1/editorials.*sectionId={id} (broad)"
+
+      - event: "multimedia.updated"
+        publisher: "multimedia-service"
+        handler: "App\\MessageHandler\\MultimediaUpdatedHandler"
+        invalidates:
+          - "httplug key: GET /multimedia/{id}"
+
+      - event: "journalist.updated"
+        publisher: "journalist-service"
+        handler: "App\\MessageHandler\\JournalistUpdatedHandler"
+        invalidates:
+          - "httplug key: GET /journalists/{aliasId}"
+
+      - event: "tag.updated"
+        publisher: "tag-service"
+        handler: "App\\MessageHandler\\TagUpdatedHandler"
+        invalidates:
+          - "httplug key: GET /tags/{id}"
+
+    infrastructure:
+      messenger_config: "config/packages/messenger.yaml"
+      routing: |
+        framework:
+          messenger:
+            routing:
+              'App\Message\EditorialUpdated': amqp
+              'App\Message\SectionUpdated': amqp
+              'App\Message\MultimediaUpdated': amqp
+              'App\Message\JournalistUpdated': amqp
+              'App\Message\TagUpdated': amqp
+
+  rules:
+    - id: "CACHE-001"
+      rule: "All external HTTP client calls MUST go through httplug cache plugin"
+      verification: "httplug.yaml configures cache plugin for all clients"
+
+    - id: "CACHE-002"
+      rule: "stale-if-error MUST be enabled for all clients"
+      verification: "httplug cache plugin config includes stale_if_error TTL"
+
+    - id: "CACHE-003"
+      rule: "Cache invalidation MUST be event-driven, not TTL-only"
+      verification: "AMQP handlers exist for each external service event"
+
+    - id: "CACHE-004"
+      rule: "Varnish BAN requests MUST be triggered from AMQP handlers"
+      verification: "Each handler calls VarnishInvalidator for affected endpoints"
+
+    - id: "CACHE-005"
+      rule: "Cache keys MUST be deterministic (based on HTTP method + URL)"
+      verification: "httplug cache plugin uses standard HTTP cache key generation"
+
+    - id: "CACHE-006"
+      rule: "No per-client caching logic in Aggregator (httplug handles it)"
+      verification: "No cache-related code in src/Aggregator/ (only httplug config)"
+
+  ownership_context:
+    description: |
+      All microservices (editorial, section, multimedia, journalist, tag, membership, widget)
+      are owned by the same team. This means:
+      - We control both publisher and consumer of AMQP events
+      - We can add events to any microservice as needed
+      - Less need for heavy anti-corruption layers
+      - BUT we still maintain clean interfaces between services
+
+  source_evidence:
+    - "snaapi-develop/src/MessageHandler/PurgeEditorialHandler.php (existing pattern)"
+    - "snaapi-develop/config/packages/messenger.yaml (AMQP already configured)"
+    - "Conversation 2026-02-15: D2 Cache, D3 AMQP Invalidation, D4 Ownership decisions"

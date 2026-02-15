@@ -1,0 +1,125 @@
+# Architectural Constraint: Resilience Strategy
+# Created: 2026-02-15
+# Type: MANDATORY - All Aggregator sub-services MUST implement circuit breaker with criticality-based fallback
+
+architectural_constraint:
+  name: "Resilience Strategy - Circuit Breaker + Graceful Degradation"
+  type: "mandatory"
+  status: "active"
+  created_at: "2026-02-15"
+  description: |
+    Every Aggregator sub-service MUST implement a circuit breaker pattern with
+    fallback behavior determined by service criticality level.
+
+    This replaces the current silent `catch (\Throwable) { continue; }` pattern
+    in EditorialOrchestrator with explicit, testable degradation policies.
+
+  service_criticality:
+    levels:
+      - name: "CRITICAL"
+        description: "Failure aborts the entire request (503 Service Unavailable)"
+        fallback: "throw ServiceUnavailableException"
+        retry: "none (fail fast)"
+      - name: "LOW"
+        description: "Failure degrades the response gracefully"
+        fallback: "return null/empty + log warning"
+        retry: "none (use stale cache if available via httplug)"
+
+    service_map:
+      - service: "editorial-client"
+        criticality: "CRITICAL"
+        reason: "Cannot render editorial without the editorial itself"
+        on_failure: "503 Service Unavailable to client"
+
+      - service: "multimedia-client"
+        criticality: "LOW"
+        reason: "Editorial is readable without multimedia"
+        on_failure: "Editorial without multimedia, log warning"
+
+      - service: "section-client"
+        criticality: "LOW"
+        reason: "Section name is supplementary metadata"
+        on_failure: "Editorial without section name, degraded but functional"
+
+      - service: "journalist-client"
+        criticality: "LOW"
+        reason: "Signatures are supplementary metadata"
+        on_failure: "Editorial without journalist signatures"
+
+      - service: "tag-client"
+        criticality: "LOW"
+        reason: "Tags are supplementary metadata"
+        on_failure: "Editorial without tags"
+
+      - service: "membership-client"
+        criticality: "LOW"
+        reason: "Membership links are supplementary"
+        on_failure: "Editorial without membership links"
+
+      - service: "widget-client"
+        criticality: "LOW"
+        reason: "Widgets are supplementary content"
+        on_failure: "Editorial without widget content"
+
+  implementation:
+    pattern: "circuit-breaker-per-service"
+    location: "src/Aggregator/Service/"
+    description: |
+      Each Aggregator sub-service (MultimediaResolver, SignatureResolver, etc.)
+      wraps its external client calls with try/catch. The catch behavior depends
+      on the service criticality:
+
+      - CRITICAL: Re-throw as ServiceUnavailableException
+      - LOW: Return null/empty, log warning with context
+
+      This is NOT a full circuit breaker library (no half-open state, no counters).
+      It is explicit degradation policy per service. The httplug cache layer provides
+      stale-if-error as the first line of defense before degradation kicks in.
+
+    enum: "App\\Infrastructure\\Enum\\ServiceCriticality"
+    interface: |
+      enum ServiceCriticality: string {
+          case CRITICAL = 'critical';
+          case LOW = 'low';
+      }
+
+  rules:
+    - id: "RES-001"
+      rule: "CRITICAL services MUST throw on failure (never silently degrade)"
+      verification: "No catch-and-continue for editorial-client calls"
+
+    - id: "RES-002"
+      rule: "LOW services MUST log a warning when degrading"
+      verification: "Every catch block for LOW services includes $this->logger->warning()"
+
+    - id: "RES-003"
+      rule: "No silent catch(\\Throwable) { continue; } anywhere in Aggregator/"
+      verification: "grep -r 'catch.*Throwable.*continue' src/Aggregator/ returns 0 results"
+
+    - id: "RES-004"
+      rule: "Each sub-service MUST have a test for the degradation scenario"
+      verification: "Test exists for each resolver with mocked failing client"
+
+    - id: "RES-005"
+      rule: "Degraded responses MUST be explicitly typed (nullable properties in DTO)"
+      verification: "ResolvedEditorial nullable properties match LOW criticality services"
+
+  testing_strategy:
+    approach: "Mock external clients to simulate failures"
+    scenarios:
+      - name: "CRITICAL service down"
+        given: "editorial-client throws ConnectionException"
+        then: "Aggregator throws ServiceUnavailableException"
+      - name: "LOW service down, no cache"
+        given: "multimedia-client throws ConnectionException, httplug has no cache"
+        then: "ResolvedEditorial.multimedia is null, warning logged"
+      - name: "LOW service down, stale cache available"
+        given: "section-client throws ConnectionException, httplug has stale entry"
+        then: "httplug returns stale data (transparent), no degradation needed"
+      - name: "All LOW services down"
+        given: "All non-critical clients throw"
+        then: "ResolvedEditorial has only editorial data, multiple warnings logged"
+
+  source_evidence:
+    - "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php (current silent catch)"
+    - "Conversation 2026-02-15: D1 Resilience decision"
