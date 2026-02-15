@@ -1,0 +1,42 @@
+# Auto-generated spec manifest
+# Updated by /workflows:discover --setup on 2026-02-15
+
+manifest:
+  version: "1.0"
+  generated_at: "2026-02-15T22:15:00Z"
+  project: "snaapi"
+
+  statistics:
+    entities: 0
+    api_contracts: 1
+    business_rules: 1
+    architectural_constraints: 1
+    total_specs: 3
+
+  entities: []
+
+  api_contracts:
+    - name: "editorial-api"
+      file: "api-contracts/editorial-api.yaml"
+      endpoints: 2
+      last_updated: "2026-02-15T22:15:00Z"
+
+  business_rules:
+    - domain_area: "editorial-aggregation"
+      file: "business-rules/editorial-aggregation.yaml"
+      rules_count: 5
+      critical_rules: 2
+      last_updated: "2026-02-15T22:15:00Z"
+
+  architectural_constraints:
+    - category: "layer-dependencies"
+      file: "architectural-constraints/layer-dependencies.yaml"
+      constraints_count: 6
+      last_updated: "2026-02-15T22:15:00Z"
+
+  extraction_config:
+    extract_specs: true
+    depth: "standard"
+    include_tests: false
+
+  next_recommended_update: "2026-02-22T22:15:00Z"

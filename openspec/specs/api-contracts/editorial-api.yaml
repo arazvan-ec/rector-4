@@ -1,0 +1,61 @@
+# API Contract: Editorial API
+# Extracted by /workflows:discover on 2026-02-15
+
+api_contract:
+  name: "Editorial API"
+  version: "v1"
+  base_path: "/v1/editorials"
+  description: "Aggregates editorial content from multiple microservices for mobile apps"
+
+  endpoints:
+    - method: "GET"
+      path: "/v1/editorials/{id}"
+      description: "Get full editorial detail with all aggregated data"
+      parameters:
+        - name: "id"
+          in: "path"
+          type: "string"
+          required: true
+          description: "Editorial unique identifier"
+      responses:
+        - status: 200
+          description: "Full editorial with body, multimedia, signatures, tags, recommended editorials"
+          schema:
+            $ref: "#/schemas/EditorialDetail"
+        - status: 404
+          description: "Editorial not found"
+        - status: 403
+          description: "Editorial not published yet (EditorialNotPublishedYetException)"
+      authentication: "none"
+      cache: "Cache-Control headers via CacheControlSubscriber"
+
+    - method: "GET"
+      path: "/v1/editorials/{id}/comments"
+      description: "Get comment count for editorial (via legacy client)"
+      parameters:
+        - name: "id"
+          in: "path"
+          type: "string"
+          required: true
+      responses:
+        - status: 200
+          description: "Comment count"
+
+  schemas:
+    EditorialDetail:
+      type: "object"
+      properties:
+        body: { type: "array", description: "Transformed body elements" }
+        multimedia: { type: "object", description: "Opening multimedia (photo/video/widget)" }
+        signatures: { type: "array", description: "Journalist signatures with alias" }
+        tags: { type: "array", description: "Associated tags" }
+        standfirst: { type: "object", description: "Article standfirst/subtitle" }
+        recommendedEditorials: { type: "array", description: "Related editorial recommendations" }
+        countComments: { type: "integer", description: "Total comment count" }
+
+  source_files:
+    - "snaapi-develop/src/Controller/V1/EditorialController.php"
+    - "snaapi-develop/src/Controller/V1/Schemas/"
+    - "snaapi-develop/config/routes/v1.yaml"
+
+  extracted_at: "2026-02-15T22:15:00Z"

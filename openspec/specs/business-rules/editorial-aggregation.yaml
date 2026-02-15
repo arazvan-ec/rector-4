@@ -1,0 +1,96 @@
+# Business Rules: Editorial Aggregation
+# Extracted by /workflows:discover on 2026-02-15
+
+business_rules:
+  domain_area: "editorial-aggregation"
+  description: "Rules governing how editorial content is fetched, aggregated, and transformed"
+
+  rules:
+    - id: "BR-EDIT-001"
+      name: "Visibility Gate"
+      description: "Only published/visible editorials are returned to clients"
+      type: "constraint"
+      condition:
+        when: "Editorial is requested by ID"
+        given: "Editorial exists in editorial service"
+        then: "Return editorial only if isVisible() is true, else throw EditorialNotPublishedYetException"
+      implementation:
+        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
+        method: "execute"
+        pattern: "guard-clause"
+      priority: "critical"
+
+    - id: "BR-EDIT-002"
+      name: "Legacy Fallback"
+      description: "If editorial has no sourceEditorial, delegate to legacy client"
+      type: "workflow"
+      condition:
+        when: "Editorial.sourceEditorial() is null"
+        given: "Editorial fetched from editorial service"
+        then: "Redirect to QueryLegacyClient.findEditorialById()"
+      implementation:
+        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
+        method: "execute"
+        pattern: "early-return"
+      priority: "critical"
+
+    - id: "BR-EDIT-003"
+      name: "Inserted News Aggregation"
+      description: "Body elements of type BodyTagInsertedNews are enriched with full editorial data"
+      type: "calculation"
+      condition:
+        when: "Body contains BodyTagInsertedNews elements"
+        given: "Each inserted news has an editorialId"
+        then: "Fetch editorial, section, signatures, and multimedia for each inserted news"
+      implementation:
+        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
+        method: "execute"
+        pattern: "loop-with-aggregation"
+      exceptions:
+        - "Invisible inserted editorials are silently skipped"
+      priority: "high"
+
+    - id: "BR-EDIT-004"
+      name: "Recommended Editorials Aggregation"
+      description: "Recommended editorials are enriched with full data, failures are silently skipped"
+      type: "calculation"
+      condition:
+        when: "Editorial has recommended editorials"
+        given: "List of EditorialId references"
+        then: "Fetch and aggregate each, catch and log errors, continue on failure"
+      implementation:
+        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
+        method: "execute"
+        pattern: "loop-with-error-tolerance"
+      exceptions:
+        - "Any Throwable is caught, logged, and skipped"
+      priority: "high"
+
+    - id: "BR-EDIT-005"
+      name: "Multimedia Async Resolution"
+      description: "Multimedia data is fetched asynchronously via Guzzle promises and settled before use"
+      type: "workflow"
+      condition:
+        when: "Editorial or sub-editorials have multimedia"
+        given: "Multimedia is not a Widget type"
+        then: "Fetch async via promises, settle with Utils::settle(), filter fulfilled results"
+      implementation:
+        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
+        method: "getAsyncMultimedia, fulfilledMultimedia"
+        pattern: "promise-aggregation"
+      priority: "medium"
+
+  cross_cutting_rules:
+    - id: "BR-CROSS-001"
+      name: "Signature Resolution"
+      description: "Journalist signatures are resolved via alias ID across all editorial types"
+      affected_areas: ["editorial-detail", "inserted-news", "recommended-editorials"]
+      implementation:
+        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
+        method: "retrieveAliasFormat"
+
+  source_files:
+    - "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
+    - "snaapi-develop/src/Exception/EditorialNotPublishedYetException.php"
+
+  extracted_at: "2026-02-15T22:15:00Z"

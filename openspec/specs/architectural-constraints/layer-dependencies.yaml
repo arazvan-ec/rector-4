@@ -1,0 +1,88 @@
+# Architectural Constraints: Layer Dependencies
+# Extracted by /workflows:discover on 2026-02-15
+
+architectural_constraints:
+  category: "layer-dependencies"
+  description: "Rules governing layer boundaries, dependency direction, and patterns"
+
+  layer_constraints:
+    - name: "Controller Thinness"
+      description: "Controllers delegate immediately to orchestrators"
+      rule: "Controller methods contain only routing + orchestrator delegation"
+      enforcement: "code-review"
+      violations_found: 0
+
+    - name: "Orchestrator Responsibility"
+      description: "Orchestrators coordinate service calls and transformation"
+      rule: "Orchestrators manage async fetching + transformer delegation"
+      enforcement: "code-review"
+      violations_found: 1
+      violation_details: "EditorialOrchestrator does too much (SRP violation)"
+
+    - name: "Transformer Purity"
+      description: "DataTransformers only transform data, no side effects"
+      rule: "Transformers receive data and return transformed arrays"
+      enforcement: "phpstan"
+      violations_found: 0
+
+  module_constraints:
+    - name: "Bounded Context Isolation"
+      description: "External service clients are isolated in vendor packages"
+      modules:
+        - name: "ec/editorial-client"
+          public_api: "QueryEditorialClient"
+          dependencies: []
+        - name: "ec/multimedia-client"
+          public_api: "QueryMultimediaClient"
+          dependencies: []
+        - name: "ec/journalist-client"
+          public_api: "QueryJournalistClient"
+          dependencies: []
+        - name: "ec/membership-client"
+          public_api: "QueryMembershipClient"
+          dependencies: []
+        - name: "ec/section-client"
+          public_api: "QuerySectionClient"
+          dependencies: []
+        - name: "ec/tag-client"
+          public_api: "QueryTagClient"
+          dependencies: []
+
+  pattern_constraints:
+    - name: "Chain of Responsibility for Content Types"
+      description: "New content types are added via tagged services + compiler passes"
+      applies_to: "src/Orchestrator/"
+      pattern: "chain-of-responsibility"
+      anti_patterns: ["Switch statements on content type"]
+
+    - name: "Strategy for Body Element Types"
+      description: "New body element types are added via tagged services"
+      applies_to: "src/Application/DataTransformer/"
+      pattern: "strategy"
+      anti_patterns: ["If-else chains on element type"]
+
+    - name: "Constructor Injection Only"
+      description: "All dependencies injected via constructor, no setter injection"
+      applies_to: "src/"
+      required: true
+
+  performance_constraints:
+    - name: "Async Multimedia Fetching"
+      description: "Multimedia data must be fetched asynchronously to reduce latency"
+      threshold: "parallel HTTP requests via Guzzle promises"
+      implementation: "Utils::settle() for promise resolution"
+
+  technology_constraints:
+    - name: "PHP Version"
+      allowed: ["8.1", "8.2", "8.3"]
+      reason: "Symfony 6.4 LTS requirement"
+    - name: "Symfony Version"
+      allowed: ["6.4.*"]
+      reason: "LTS version for stability"
+
+  source_evidence:
+    - "snaapi-develop/composer.json"
+    - "snaapi-develop/CLAUDE.md"
+    - "snaapi-develop/src/Kernel.php"
+
+  extracted_at: "2026-02-15T22:15:00Z"
