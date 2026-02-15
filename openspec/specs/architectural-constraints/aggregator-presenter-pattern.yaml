@@ -1,0 +1,119 @@
+# Architectural Constraint: Aggregator-Presenter Separation
+# Created: 2026-02-15
+# Type: MANDATORY - All features exposing data via API MUST follow this pattern
+
+architectural_constraint:
+  name: "Aggregator-Presenter Separation"
+  type: "mandatory"
+  status: "active"
+  created_at: "2026-02-15"
+  description: |
+    Every feature that exposes data via API MUST follow the two-layer pattern:
+    1. Aggregator Layer: Fetches and resolves data from external services → typed, immutable DTO
+    2. Presenter Layer: Translates the DTO into format-specific output (apps, web, AMP, RSS, etc.)
+
+    This separation ensures:
+    - Aggregated data is reusable across multiple output formats
+    - New formats are added without modifying existing code (OCP)
+    - Aggregation and presentation are independently testable
+    - The domain model acts as a clear contract between layers
+
+  layers:
+    aggregator:
+      path: "src/Aggregator/"
+      responsibility: "Fetch data from external services, resolve async operations, return typed DTO"
+      can_import:
+        - "Ec\\*\\Domain\\Model\\*"  # External client interfaces
+        - "Ec\\*\\Infrastructure\\Client\\*"  # External client implementations
+        - "App\\Aggregator\\DTO\\*"  # Own DTOs
+        - "App\\Aggregator\\Service\\*"  # Own sub-services
+        - "GuzzleHttp\\Promise\\*"  # Async support
+        - "Psr\\Log\\*"  # Logging
+      cannot_import:
+        - "App\\Application\\DataTransformer\\*"
+        - "App\\Presenter\\*"
+        - "App\\Controller\\*"
+      output: "DTO (final readonly class)"
+
+    presenter:
+      path: "src/Presenter/"
+      responsibility: "Translate DTO into format-specific array for API response"
+      can_import:
+        - "App\\Aggregator\\DTO\\*"  # DTOs to translate
+        - "App\\Application\\DataTransformer\\*"  # Existing transformers (reuse)
+        - "App\\Infrastructure\\*"  # Infrastructure services
+      cannot_import:
+        - "Ec\\*\\Infrastructure\\Client\\*"  # No direct service calls
+        - "Ec\\*\\Domain\\Model\\Query*"  # No query clients
+        - "GuzzleHttp\\Promise\\*"  # No async in presenters
+      output: "array<string, mixed>"
+
+  rules:
+    - id: "APR-001"
+      rule: "Aggregators NEVER format data for a specific consumer"
+      verification: "grep -r 'DataTransformer' src/Aggregator/ returns 0 results"
+
+    - id: "APR-002"
+      rule: "Presenters NEVER make calls to external services"
+      verification: "grep -r 'QueryClient\\|Client\\Http' src/Presenter/ returns 0 results"
+
+    - id: "APR-003"
+      rule: "The intermediate model (DTO) MUST be immutable and typed"
+      verification: "All classes in Aggregator/DTO/ are 'final readonly class'"
+
+    - id: "APR-004"
+      rule: "New output formats are added by implementing EditorialPresenterInterface"
+      verification: "All classes in Presenter/*/ implement EditorialPresenterInterface"
+
+    - id: "APR-005"
+      rule: "Presenters are registered via Symfony service tags"
+      verification: "Tag 'app.editorial.presenter' in config/packages/presenters.yaml"
+
+    - id: "APR-006"
+      rule: "Adding a new format requires ONLY: new Presenter class + tag registration"
+      verification: "No modifications to Aggregator/, existing Presenters, or Controller/"
+
+  interfaces:
+    aggregator:
+      name: "EditorialAggregatorInterface"
+      path: "src/Aggregator/EditorialAggregatorInterface.php"
+      contract: "aggregate(string $editorialId): ResolvedEditorial"
+
+    presenter:
+      name: "EditorialPresenterInterface"
+      path: "src/Presenter/EditorialPresenterInterface.php"
+      contract: |
+        present(ResolvedEditorial $editorial): array
+        supports(string $format): bool
+
+    registry:
+      name: "EditorialPresenterRegistry"
+      path: "src/Presenter/EditorialPresenterRegistry.php"
+      contract: "present(ResolvedEditorial $editorial, string $format): array"
+
+  formats:
+    current:
+      - name: "apps"
+        class: "App\\Presenter\\Apps\\AppsEditorialPresenter"
+        description: "Mobile app JSON format (original)"
+    planned:
+      - name: "web"
+        description: "Web browser format"
+      - name: "amp"
+        description: "AMP (Accelerated Mobile Pages)"
+      - name: "rss"
+        description: "RSS feed format"
+
+  compliance_check:
+    automated:
+      - "PHPStan: verify import constraints via baseline or custom rules"
+      - "grep: verify no cross-layer imports"
+    review:
+      - "Every PR adding API output MUST include Aggregator + Presenter"
+      - "Architecture reviewer checks layer separation"
+      - "New DTOs must be final readonly class"
+
+  source_evidence:
+    - "openspec/changes/api-refactoring/01_shaped_brief.md"
+    - "snaapi-develop/src/Aggregator/"
+    - "snaapi-develop/src/Presenter/"

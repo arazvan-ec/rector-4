@@ -10,8 +10,8 @@ manifest:
     entities: 0
     api_contracts: 1
     business_rules: 1
-    architectural_constraints: 1
-    total_specs: 3
+    architectural_constraints: 2
+    total_specs: 4
 
   entities: []
 
@@ -33,6 +33,11 @@ manifest:
       file: "architectural-constraints/layer-dependencies.yaml"
       constraints_count: 6
       last_updated: "2026-02-15T22:15:00Z"
+    - category: "aggregator-presenter-pattern"
+      file: "architectural-constraints/aggregator-presenter-pattern.yaml"
+      constraints_count: 6
+      type: "mandatory"
+      last_updated: "2026-02-15T22:30:00Z"
 
   extraction_config:
     extract_specs: true

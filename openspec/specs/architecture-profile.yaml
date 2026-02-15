@@ -10,19 +10,31 @@ stack:
 
 architecture:
   pattern: "ddd"
+  mandatory_pattern: "aggregator-presenter"
+  mandatory_pattern_ref: "openspec/specs/architectural-constraints/aggregator-presenter-pattern.yaml"
   layers:
     - name: "controller"
       path: "snaapi-develop/src/Controller/"
       description: "HTTP entry points (thin controllers)"
       dependencies: ["orchestrator"]
+    - name: "aggregator"
+      path: "snaapi-develop/src/Aggregator/"
+      description: "LAYER 1: Fetch and resolve external data → typed DTO (ResolvedEditorial)"
+      dependencies: ["external-clients"]
+      cannot_depend_on: ["presenter", "application"]
+    - name: "presenter"
+      path: "snaapi-develop/src/Presenter/"
+      description: "LAYER 2: Translate DTO → format-specific array (apps, web, AMP, RSS...)"
+      dependencies: ["aggregator-dto", "application"]
+      cannot_depend_on: ["external-clients", "aggregator-service"]
     - name: "application"
       path: "snaapi-develop/src/Application/"
-      description: "Data transformers (domain → API response)"
+      description: "Data transformers (used by presenters)"
       dependencies: ["domain-models"]
     - name: "orchestrator"
       path: "snaapi-develop/src/Orchestrator/"
-      description: "Aggregate multiple services, coordinate async calls"
-      dependencies: ["application", "infrastructure", "domain-models"]
+      description: "Thin coordinator: aggregator.aggregate() → presenter.present()"
+      dependencies: ["aggregator", "presenter"]
     - name: "infrastructure"
       path: "snaapi-develop/src/Infrastructure/"
       description: "Enums, services (Thumbor, PictureShots), traits"
@@ -98,12 +110,20 @@ conventions:
     files: "match-class-name"
   structure:
     controllers: "src/Controller/V1/"
+    aggregators: "src/Aggregator/"
+    aggregator_dtos: "src/Aggregator/DTO/"
+    aggregator_services: "src/Aggregator/Service/"
+    presenters: "src/Presenter/"
+    presenter_apps: "src/Presenter/Apps/"
     transformers: "src/Application/DataTransformer/"
     orchestrators: "src/Orchestrator/"
     infrastructure: "src/Infrastructure/"
     compilers: "src/DependencyInjection/Compiler/"
   reference_files:
     controller: "snaapi-develop/src/Controller/V1/EditorialController.php"
+    aggregator: "snaapi-develop/src/Aggregator/EditorialAggregator.php"
+    aggregator_dto: "snaapi-develop/src/Aggregator/DTO/ResolvedEditorial.php"
+    presenter: "snaapi-develop/src/Presenter/Apps/AppsEditorialPresenter.php"
     orchestrator: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
     transformer: "snaapi-develop/src/Application/DataTransformer/Apps/Body/ParagraphDataTransformer.php"
     compiler: "snaapi-develop/src/DependencyInjection/Compiler/BodyDataTransformerCompiler.php"
