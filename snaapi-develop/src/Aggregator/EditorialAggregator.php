@@ -48,6 +48,7 @@ class EditorialAggregator implements EditorialAggregatorInterface
 
     public function aggregate(string $editorialId): ResolvedEditorial
     {
+        // CRITICAL: editorial fetch — failure aborts the entire request
         /** @var NewsBase $editorial */
         $editorial = $this->queryEditorialClient->findEditorialById($editorialId);
 
@@ -55,38 +56,46 @@ class EditorialAggregator implements EditorialAggregatorInterface
             throw new EditorialNotPublishedYetException();
         }
 
-        /** @var Section $section */
-        $section = $this->querySectionClient->findSectionById($editorial->sectionId());
+        // LOW: section — degraded response without section metadata
+        $section = $this->resolveSection($editorial);
 
-        // Resolve membership links
-        [$membershipPromise, $membershipLinksList] = $this->getPromiseMembershipLinks($editorial, $section->siteId());
+        // LOW: membership links — requires section for siteId
+        $membershipPromise = null;
+        $membershipLinksList = [];
+        if (null !== $section) {
+            try {
+                [$membershipPromise, $membershipLinksList] = $this->getPromiseMembershipLinks($editorial, $section->siteId());
+            } catch (\Throwable $throwable) {
+                $this->logger->warning('Failed to initiate membership links resolution', [
+                    'editorialId' => $editorialId,
+                    'error' => $throwable->getMessage(),
+                ]);
+            }
+        }
 
-        // Resolve signatures for main editorial
-        $hasTwitter = \in_array($editorial->editorialType(), [\Ec\Editorial\Domain\Model\EditorialBlog::EDITORIAL_TYPE]);
-        $signatures = $this->signatureResolver->resolve($editorial, $section, $hasTwitter);
+        // LOW: signatures — delegated to SignatureResolver (per-journalist error handling)
+        $signatures = $this->resolveSignatures($editorial, $section);
 
-        // Resolve inserted news
+        // LOW: inserted news — delegated to InsertedNewsResolver (per-item error handling)
         $insertedNews = $this->insertedNewsResolver->resolve($editorial);
 
-        // Resolve recommended editorials
+        // LOW: recommended editorials — delegated (per-item error handling)
         $recommendedResult = $this->recommendedEditorialsResolver->resolve($editorial);
         $recommendedEditorials = $recommendedResult['resolved'];
 
-        // Resolve multimedia (async)
+        // LOW: multimedia — delegated to MultimediaResolver (internal error handling)
         $multimediaResult = $this->multimediaResolver->resolve($editorial);
 
-        // Resolve photos from body tags
+        // LOW: photos from body tags — per-photo error handling
         $photoFromBodyTags = $this->retrievePhotosFromBodyTags($editorial->body());
 
-        // Resolve tags
+        // LOW: tags — per-tag error handling
         $tags = $this->resolveTags($editorial);
 
-        // Resolve comment count
-        /** @var array{options: array{totalrecords?:int}} $comments */
-        $comments = $this->queryLegacyClient->findCommentsByEditorialId($editorialId);
-        $commentCount = $comments['options']['totalrecords'] ?? 0;
+        // LOW: comment count — degraded to 0 on failure
+        $commentCount = $this->resolveCommentCount($editorialId);
 
-        // Resolve membership links
+        // LOW: membership links — resolve async promise
         $membershipLinks = $this->resolvePromiseMembershipLinks($membershipPromise, $membershipLinksList);
 
         return new ResolvedEditorial(
@@ -102,6 +111,61 @@ class EditorialAggregator implements EditorialAggregatorInterface
             membershipLinks: $membershipLinks,
             commentCount: $commentCount,
         );
+    }
+
+    private function resolveSection(NewsBase $editorial): ?Section
+    {
+        try {
+            return $this->querySectionClient->findSectionById($editorial->sectionId());
+        } catch (\Throwable $throwable) {
+            $this->logger->warning('Failed to resolve section', [
+                'editorialId' => $editorial->id()->id(),
+                'sectionId' => $editorial->sectionId(),
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveSignatures(NewsBase $editorial, ?Section $section): array
+    {
+        if (null === $section) {
+            return [];
+        }
+
+        try {
+            $hasTwitter = \in_array($editorial->editorialType(), [\Ec\Editorial\Domain\Model\EditorialBlog::EDITORIAL_TYPE]);
+
+            return $this->signatureResolver->resolve($editorial, $section, $hasTwitter);
+        } catch (\Throwable $throwable) {
+            $this->logger->warning('Failed to resolve signatures', [
+                'editorialId' => $editorial->id()->id(),
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
+    private function resolveCommentCount(string $editorialId): int
+    {
+        try {
+            /** @var array{options: array{totalrecords?:int}} $comments */
+            $comments = $this->queryLegacyClient->findCommentsByEditorialId($editorialId);
+
+            return $comments['options']['totalrecords'] ?? 0;
+        } catch (\Throwable $throwable) {
+            $this->logger->warning('Failed to resolve comment count', [
+                'editorialId' => $editorialId,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return 0;
+        }
     }
 
     /**
@@ -223,6 +287,10 @@ class EditorialAggregator implements EditorialAggregatorInterface
                 /** @var array<string, mixed> $membershipLinkResult */
                 $membershipLinkResult = $promise->wait();
             } catch (\Throwable $throwable) {
+                $this->logger->warning('Failed to resolve membership links', [
+                    'error' => $throwable->getMessage(),
+                ]);
+
                 return [];
             }
         }

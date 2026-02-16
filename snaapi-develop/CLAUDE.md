@@ -84,12 +84,39 @@ This project adheres to the following principles. All code contributions MUST fo
 
 ## Architecture
 
-### Request Flow
+### Request Flow (Aggregator-Presenter Pattern)
+
+This is the **mandatory** architectural pattern for all features exposing data via API:
+
 ```
-Controller → OrchestratorChainHandler → EditorialOrchestrator → External Clients → DataTransformers → Response
+Controller → Orchestrator → EditorialAggregator → ResolvedEditorial DTO → EditorialPresenterRegistry → Response
+                               ↓                                              ↓
+                          External Clients                              DataTransformers
+                          (7+ microservices)                            (format-specific)
 ```
 
+**Two-layer separation**:
+1. **Aggregator** (`src/Aggregator/`): Fetches and resolves data from external services → typed `ResolvedEditorial` DTO
+2. **Presenter** (`src/Presenter/`): Translates the DTO to a format-specific response (apps, web, etc.)
+
+**Rules**:
+- Aggregators NEVER format data for a specific consumer
+- Presenters NEVER call external services
+- The DTO (`ResolvedEditorial`) is the contract between the two layers
+
+### Adding a New Output Format
+
+To add a new format (e.g. `web`):
+1. Create `src/Presenter/Web/WebEditorialPresenter.php` implementing `EditorialPresenterInterface`
+2. Tag with `app.editorial.presenter` in services config
+3. No changes to Aggregator or existing Presenters (Open/Closed Principle)
+
 ### Core Design Patterns
+
+**Aggregator-Presenter** - Two-layer data pipeline (MANDATORY):
+- `EditorialAggregator` orchestrates data fetching from 7+ microservices
+- `EditorialPresenterRegistry` dispatches to format-specific presenters
+- `EditorialPresenterCompiler` auto-registers presenters via `app.editorial.presenter` tag
 
 **Chain of Responsibility** - Content type routing:
 - `OrchestratorChainHandler` routes requests by content type to registered orchestrators
@@ -105,26 +132,57 @@ Controller → OrchestratorChainHandler → EditorialOrchestrator → External C
 ```
 src/
 ├── Controller/          # Infrastructure: HTTP entry points (thin)
+├── Aggregator/          # Aggregation Layer: Fetch + resolve from external services
+│   ├── DTO/             # Typed immutable DTOs (ResolvedEditorial, ResolvedInsertedNews, etc.)
+│   └── Service/         # Sub-services (SignatureResolver, MultimediaResolver, etc.)
+├── Presenter/           # Presentation Layer: Format-specific translation
+│   └── Apps/            # Apps format presenter (uses existing DataTransformers)
 ├── Application/         # Application Layer: Use cases, DTOs, Transformers
-│   └── DataTransformer/ # Transform domain → API response
-├── Orchestrator/        # Application Layer: Aggregate multiple services
-├── Infrastructure/      # Infrastructure: External services, caching
+│   └── DataTransformer/ # Transform domain → API response (reused by Presenters)
+├── Orchestrator/        # Application Layer: Thin coordinators
+├── Message/             # AMQP message DTOs for cache invalidation
+├── MessageHandler/      # AMQP handlers for reactive cache invalidation
+├── Infrastructure/      # Infrastructure: External services, caching, enums
 └── DependencyInjection/ # Framework: Compiler passes, configuration
 ```
 
+### Resilience Strategy
+
+Services have **criticality levels** (`ServiceCriticality` enum):
+
+| Service | Criticality | On Failure |
+|---------|-------------|------------|
+| editorial-client | CRITICAL | 503 (abort) |
+| section-client | LOW | Degraded response, log warning |
+| multimedia-client | LOW | No multimedia, log warning |
+| journalist-client | LOW | No signatures, log warning |
+| tag-client | LOW | No tags, log warning |
+| membership-client | LOW | No membership links, log warning |
+| legacy-client (comments) | LOW | 0 comments, log warning |
+
+### Cache Strategy (3 Levels)
+
+1. **Varnish/CDN** — HTTP response caching (existing)
+2. **httplug + Couchbase** — Transparent HTTP cache for microservice calls (`config/packages/httplug.yaml`)
+3. **Circuit breaker fallback** — Aggregator sub-service degradation when cache miss + service down
+
+Cache invalidation is **reactive via AMQP**: microservices publish events, SNAAPI handlers invalidate cache keys.
+
 ### Compiler Passes (`src/DependencyInjection/Compiler/`)
 - `EditorialOrchestratorCompiler` - Registers content orchestrators
+- `EditorialPresenterCompiler` - Registers editorial presenters (tag: `app.editorial.presenter`)
 - `BodyDataTransformerCompiler` - Registers body transformers (tag: `app.data_transformer`)
 - `MediaDataTransformerCompiler` - Registers media transformers (tag: `app.media_data_transformer`)
 - `MultimediaOrchestratorCompiler` - Registers multimedia handlers
 
 ### External Clients (Bounded Contexts)
-- `QueryEditorialClient` - Editorial content
-- `QuerySectionClient` - Section hierarchy
-- `QueryMultimediaClient` - Photos, videos, widgets
-- `QueryJournalistClient` - Author information
-- `QueryTagClient` - Tags
-- `QueryMembershipClient` - Subscription/membership links
+- `QueryEditorialClient` - Editorial content (CRITICAL)
+- `QuerySectionClient` - Section hierarchy (LOW)
+- `QueryMultimediaClient` - Photos, videos, widgets (LOW)
+- `QueryJournalistClient` - Author information (LOW)
+- `QueryTagClient` - Tags (LOW)
+- `QueryMembershipClient` - Subscription/membership links (LOW)
+- `QueryLegacyClient` - Legacy API (comments) (LOW)
 
 ## Development Workflow
 

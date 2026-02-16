@@ -24,6 +24,10 @@ framework:
                         queue::event::snaapi:
                             binding_keys:
                                 - "editorial::event"
+                                - "section::event"
+                                - "multimedia::event"
+                                - "journalist::event"
+                                - "tag::event"
 
                     transport_name: snaapi
 
@@ -67,3 +71,9 @@ framework:
         routing:
             Ec\Cqrs\Messages\CommandNotification: warmup
             Ec\Editorial\Domain\Model\EventEditorial: snaapi
+            App\Message\EditorialUpdated: snaapi
+            App\Message\EditorialDeleted: snaapi
+            App\Message\SectionUpdated: snaapi
+            App\Message\MultimediaUpdated: snaapi
+            App\Message\JournalistUpdated: snaapi
+            App\Message\TagUpdated: snaapi

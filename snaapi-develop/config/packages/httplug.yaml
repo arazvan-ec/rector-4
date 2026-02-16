@@ -12,11 +12,35 @@ services:
                 error_response_delay: ['@retry.delay.time','errorResponseDelay']
                 exception_delay: ['@retry.delay.time','exceptionDelay']
 
+    httplug.cache.pool:
+        parent: cache.app
+        tags:
+            - { name: 'cache.pool', namespace: 'httplug' }
+
+    httplug.plugin.cache:
+        class: Http\Client\Common\Plugin\CachePlugin
+        arguments:
+            $pool: '@httplug.cache.pool'
+            $streamFactory: '@Nyholm\Psr7\Factory\Psr17Factory'
+            $config:
+                default_ttl: 300
+                respect_response_cache_directives: ['no-cache', 'no-store', 'max-age']
+                cache_lifetime: 86400
+
 httplug:
     plugins:
         retry:
             retry: '%env(int:SERVICE_HTTP_RETRIES)%'
         logger: ~
+        cache:
+            cache_pool: 'httplug.cache.pool'
+            config:
+                default_ttl: 300
+                respect_response_cache_directives:
+                    - 'no-cache'
+                    - 'no-store'
+                    - 'max-age'
+                cache_lifetime: 86400
         authentication:
             elasticsearch_auth:
                 type: 'basic'
@@ -34,6 +58,7 @@ httplug:
                 - 'httplug.plugin.content_length'
                 - 'httplug.plugin.redirect'
                 - 'httplug.plugin.logger'
+                - 'httplug.plugin.cache'
                 - 'httplug.plugin.authentication.elasticsearch_auth'
                 - 'httplug.plugin.retry'
             config:
@@ -49,6 +74,7 @@ httplug:
                 - 'httplug.plugin.content_length'
                 - 'httplug.plugin.redirect'
                 - 'httplug.plugin.logger'
+                - 'httplug.plugin.cache'
                 - 'httplug.plugin.authentication.elasticsearch_auth'
                 - 'httplug.plugin.retry'
                 - header_defaults:
