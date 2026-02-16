@@ -531,14 +531,15 @@
 | No external circuit breaker library | symfony/http-client retry, ganesha | Overhead not justified; explicit try/catch per service is clearer | Phase 3 |
 | httplug CachePlugin (not per-client cache) | Per-client Couchbase cache | Single config, transparent, respects HTTP semantics | Phase 3 |
 | One handler per AMQP event (not generic) | Single GenericCacheInvalidationHandler | SRP, easier to test, matches existing PurgeEditorialHandler | Phase 3 |
+| ResolvedSignature DTO for raw journalist data | Pre-formatted array in DTOs | Preserves layer separation; formatting belongs in Presenter not Aggregator | Review |
 
 ## Workflow State
 
-**Planner**: COMPLETED | **Implementer**: COMPLETED | **Reviewer**: PENDING
+**Planner**: COMPLETED | **Implementer**: COMPLETED | **Reviewer**: APPROVED | **Compounder**: COMPLETED
 **Feature**: api-refactoring
 **Started**: 2026-02-15T22:15:00Z
-**Last Updated**: 2026-02-16T01:00:00Z
-**Last Phase**: Phase 4 | **Resume Point**: /workflows:review
+**Last Updated**: 2026-02-16T02:30:00Z
+**Last Phase**: COMPOUND | **Status**: COMPLETED + COMPOUNDED
 
 ### Planning Progress
 
@@ -559,25 +560,56 @@
 -->
 
 ### QA / Reviewer Section
-<!-- Added by /workflows:review after implementation -->
-<!--
-**Status**: PENDING
-**Review Date**: -
--->
+
+**Status**: APPROVED
+**Review Date**: 2026-02-16T02:00:00Z
+**Reviewed By**: multi-agent-review (acceptance-criteria + SOLID-compliance agents)
+
+#### Acceptance Criteria Verification (10/10 PASS)
+
+| # | Criterion | Status | Evidence |
+|---|-----------|--------|----------|
+| 1 | EditorialOrchestrator ≤ 50 LOC, ≤ 4 deps | PASS | 48 LOC, 4 constructor deps |
+| 2 | ResolvedEditorial is `final readonly class` | PASS | `src/Aggregator/DTO/ResolvedEditorial.php` line 10 |
+| 3 | No imports of DataTransformer/ in Aggregator/ | PASS | Zero matches (fixed: moved JournalistsDataTransformer to Presenter) |
+| 4 | No imports of Client/Http in Presenter/ | PASS | Zero matches |
+| 5 | Pattern documented as mandatory in openspec/ | PASS | `openspec/changes/api-refactoring/design.md` |
+| 6 | New format requires ONLY new class + tag | PASS | EditorialPresenterCompiler + tagged services |
+| 7 | CRITICAL failure returns 503 | PASS | EditorialAggregator re-throws on editorial fetch |
+| 8 | LOW failure returns degraded + logged warning | PASS | All sub-services catch + log + degrade |
+| 9 | httplug cache configured for all clients | PASS | `config/packages/httplug.yaml` CachePlugin |
+| 10 | AMQP handlers exist for all event types | PASS | 6 messages + 6 handlers in messenger.yaml |
+
+#### SOLID Compliance Review
+
+| Principle | Status | Notes |
+|-----------|--------|-------|
+| SRP | COMPLIANT | SignatureResolver only fetches; AppsEditorialPresenter formats |
+| OCP | COMPLIANT | New formats via tagged services + compiler pass |
+| LSP | COMPLIANT | N/A — no inheritance hierarchies introduced |
+| ISP | COMPLIANT | EditorialPresenterInterface is minimal: supports() + present() |
+| DIP | COMPLIANT | Aggregator depends only on domain interfaces; no concrete DataTransformers |
+
+#### Fix Applied During Review
+
+- **Issue**: `SignatureResolver` imported `JournalistsDataTransformer` (cross-layer violation)
+- **Root Cause**: Signature formatting was happening in the Aggregator layer instead of the Presenter layer
+- **Fix**: Created `ResolvedSignature` DTO to carry raw domain objects (aliasId + Journalist). Moved formatting to `AppsEditorialPresenter::formatSignatures()`. DTOs now carry typed `ResolvedSignature[]` instead of pre-formatted `array<string, mixed>`
+- **Files Changed**: 8 files (1 new DTO, 1 modified resolver, 3 modified DTOs, 2 modified sub-resolvers, 1 modified presenter)
 
 ## Success Criteria
 
-- [ ] All existing tests pass (`make test_unit`)
-- [ ] PHPStan Level 9 passes (`make test_stan`)
-- [ ] Mutation testing MSI ≥ 79% (`make test_infection`)
-- [ ] EditorialOrchestrator ≤ 50 LOC, ≤ 4 constructor deps
-- [ ] API response format unchanged (backward compatible)
-- [ ] ResolvedEditorial is `final readonly class`
-- [ ] No imports of DataTransformer/ in Aggregator/
-- [ ] No imports of Client/Http in Presenter/
-- [ ] Aggregator-Presenter pattern documented as mandatory in openspec/
-- [ ] Adding new format requires ONLY: new class + tag (no existing code changes)
-- [ ] CRITICAL service failure returns 503
-- [ ] LOW service failure returns degraded response + logged warning
-- [ ] httplug cache configured for all external clients
-- [ ] AMQP handlers exist for all event types
+- [x] All existing tests pass (`make test_unit`)
+- [x] PHPStan Level 9 passes (`make test_stan`)
+- [x] Mutation testing MSI ≥ 79% (`make test_infection`)
+- [x] EditorialOrchestrator ≤ 50 LOC, ≤ 4 constructor deps
+- [x] API response format unchanged (backward compatible)
+- [x] ResolvedEditorial is `final readonly class`
+- [x] No imports of DataTransformer/ in Aggregator/
+- [x] No imports of Client/Http in Presenter/
+- [x] Aggregator-Presenter pattern documented as mandatory in openspec/
+- [x] Adding new format requires ONLY: new class + tag (no existing code changes)
+- [x] CRITICAL service failure returns 503
+- [x] LOW service failure returns degraded response + logged warning
+- [x] httplug cache configured for all external clients
+- [x] AMQP handlers exist for all event types

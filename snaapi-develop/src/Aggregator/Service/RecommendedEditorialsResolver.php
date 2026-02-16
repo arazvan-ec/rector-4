@@ -49,7 +49,7 @@ class RecommendedEditorialsResolver
                 /** @var Section $section */
                 $section = $this->querySectionClient->findSectionById($recommendedEditorial->sectionId());
 
-                $signatures = $this->signatureResolver->resolve($recommendedEditorial, $section);
+                $signatures = $this->signatureResolver->resolve($recommendedEditorial);
 
                 $multimediaId = !empty($recommendedEditorial->multimedia()->id()->id())
                     ? $recommendedEditorial->multimedia()->id()->id()

@@ -48,7 +48,7 @@ class InsertedNewsResolver
                 /** @var Section $section */
                 $section = $this->querySectionClient->findSectionById($insertedEditorial->sectionId());
 
-                $signatures = $this->signatureResolver->resolve($insertedEditorial, $section);
+                $signatures = $this->signatureResolver->resolve($insertedEditorial);
 
                 $multimediaId = !empty($insertedEditorial->multimedia()->id()->id())
                     ? $insertedEditorial->multimedia()->id()->id()

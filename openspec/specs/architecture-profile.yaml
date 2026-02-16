@@ -152,6 +152,39 @@ conventions:
     compiler: "snaapi-develop/src/DependencyInjection/Compiler/BodyDataTransformerCompiler.php"
     test: "snaapi-develop/tests/Orchestrator/Chain/EditorialOrchestratorTest.php"
 
+learned_patterns:
+  - name: "aggregator-presenter-separation"
+    confidence: "medium"
+    source_features: ["api-refactoring"]
+    description: "Aggregators fetch raw data into typed DTOs. Presenters format DTOs for specific consumers."
+  - name: "resolved-signature-dto"
+    confidence: "low"
+    source_features: ["api-refactoring"]
+    description: "Carry raw domain objects (Journalist) across layer boundaries instead of pre-formatted arrays."
+  - name: "service-criticality-degradation"
+    confidence: "medium"
+    source_features: ["api-refactoring"]
+    description: "CRITICAL services fail the request. LOW services return null/empty + logged warning."
+  - name: "compiler-pass-extensibility"
+    confidence: "medium"
+    source_features: ["api-refactoring"]
+    description: "New output formats require only 1 class + 1 service tag. Zero existing code changes."
+  - name: "amqp-one-handler-per-event"
+    confidence: "low"
+    source_features: ["api-refactoring"]
+    description: "Separate handler class per message type for SRP and testability."
+
+learned_antipatterns:
+  - name: "cross-layer-datatransformer-import"
+    frequency: 1
+    prevention: "Aggregators must NEVER import from Application/DataTransformer/. Use typed DTOs to carry raw data."
+  - name: "pre-formatted-data-in-dtos"
+    frequency: 1
+    prevention: "DTOs carry raw domain objects only. Formatting belongs in Presenter layer."
+  - name: "god-class-orchestrator"
+    frequency: 1
+    prevention: "Apply Aggregator-Presenter pattern early. Max 7 constructor deps per class."
+
 quality_thresholds:
   max_class_loc: 200
   max_public_methods: 7

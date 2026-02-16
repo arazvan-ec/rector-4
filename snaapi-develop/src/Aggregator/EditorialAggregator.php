@@ -74,7 +74,7 @@ class EditorialAggregator implements EditorialAggregatorInterface
         }
 
         // LOW: signatures — delegated to SignatureResolver (per-journalist error handling)
-        $signatures = $this->resolveSignatures($editorial, $section);
+        $signatures = $this->resolveSignatures($editorial);
 
         // LOW: inserted news — delegated to InsertedNewsResolver (per-item error handling)
         $insertedNews = $this->insertedNewsResolver->resolve($editorial);
@@ -129,18 +129,12 @@ class EditorialAggregator implements EditorialAggregatorInterface
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return \App\Aggregator\DTO\ResolvedSignature[]
      */
-    private function resolveSignatures(NewsBase $editorial, ?Section $section): array
+    private function resolveSignatures(NewsBase $editorial): array
     {
-        if (null === $section) {
-            return [];
-        }
-
         try {
-            $hasTwitter = \in_array($editorial->editorialType(), [\Ec\Editorial\Domain\Model\EditorialBlog::EDITORIAL_TYPE]);
-
-            return $this->signatureResolver->resolve($editorial, $section, $hasTwitter);
+            return $this->signatureResolver->resolve($editorial);
         } catch (\Throwable $throwable) {
             $this->logger->warning('Failed to resolve signatures', [
                 'editorialId' => $editorial->id()->id(),

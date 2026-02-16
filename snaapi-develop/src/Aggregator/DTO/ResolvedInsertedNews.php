@@ -10,7 +10,7 @@ use Ec\Section\Domain\Model\Section;
 final readonly class ResolvedInsertedNews
 {
     /**
-     * @param array<string, mixed> $signatures
+     * @param ResolvedSignature[] $signatures
      */
     public function __construct(
         public NewsBase $editorial,

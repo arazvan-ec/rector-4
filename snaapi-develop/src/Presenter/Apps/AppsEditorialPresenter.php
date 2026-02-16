@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace App\Presenter\Apps;
 
 use App\Aggregator\DTO\ResolvedEditorial;
+use App\Aggregator\DTO\ResolvedSignature;
 use App\Application\DataTransformer\Apps\AppsDataTransformer;
+use App\Application\DataTransformer\Apps\JournalistsDataTransformer;
 use App\Application\DataTransformer\Apps\Media\MediaDataTransformerHandler;
 use App\Application\DataTransformer\Apps\MultimediaDataTransformer;
 use App\Application\DataTransformer\Apps\RecommendedEditorialsDataTransformer;
 use App\Application\DataTransformer\Apps\StandfirstDataTransformer;
 use App\Application\DataTransformer\BodyDataTransformer;
 use App\Presenter\EditorialPresenterInterface;
+use Ec\Editorial\Domain\Model\EditorialBlog;
 use Ec\Editorial\Domain\Model\NewsBase;
 use Ec\Editorial\Exceptions\MultimediaDataTransformerNotFoundException;
+use Ec\Section\Domain\Model\Section;
 
 class AppsEditorialPresenter implements EditorialPresenterInterface
 {
@@ -24,6 +28,7 @@ class AppsEditorialPresenter implements EditorialPresenterInterface
         private readonly RecommendedEditorialsDataTransformer $recommendedEditorialsDataTransformer,
         private readonly MultimediaDataTransformer $multimediaDataTransformer,
         private readonly MediaDataTransformerHandler $mediaDataTransformerHandler,
+        private readonly JournalistsDataTransformer $journalistsDataTransformer,
     ) {}
 
     public function supports(string $format): bool
@@ -49,8 +54,9 @@ class AppsEditorialPresenter implements EditorialPresenterInterface
         // 2. Comment count (resolved by aggregator)
         $editorialResult['countComments'] = $resolved->commentCount;
 
-        // 3. Signatures (already resolved by aggregator)
-        $editorialResult['signatures'] = $resolved->signatures;
+        // 3. Signatures (format raw ResolvedSignature DTOs into apps format)
+        $hasTwitter = \in_array($editorial->editorialType(), [EditorialBlog::EDITORIAL_TYPE]);
+        $editorialResult['signatures'] = $this->formatSignatures($resolved->signatures, $section, $hasTwitter);
 
         // 4. Body transformation - needs $resolveData in legacy format
         $resolveData = $this->buildResolveData($resolved);
@@ -100,7 +106,7 @@ class AppsEditorialPresenter implements EditorialPresenterInterface
             $resolveData['insertedNews'][$id] = [
                 'editorial' => $insertedNews->editorial,
                 'section' => $insertedNews->section,
-                'signatures' => $insertedNews->signatures,
+                'signatures' => $this->formatSignatures($insertedNews->signatures, $insertedNews->section),
                 'multimediaId' => $insertedNews->multimediaId,
             ];
         }
@@ -111,7 +117,7 @@ class AppsEditorialPresenter implements EditorialPresenterInterface
             $resolveData['recommendedEditorials'][$id] = [
                 'editorial' => $recommended->editorial,
                 'section' => $recommended->section,
-                'signatures' => $recommended->signatures,
+                'signatures' => $this->formatSignatures($recommended->signatures, $recommended->section),
                 'multimediaId' => $recommended->multimediaId,
             ];
         }
@@ -123,6 +129,32 @@ class AppsEditorialPresenter implements EditorialPresenterInterface
         $resolveData['membershipLinkCombine'] = $resolved->membershipLinks;
 
         return $resolveData;
+    }
+
+    /**
+     * Format raw ResolvedSignature DTOs into the apps-specific array format.
+     *
+     * @param ResolvedSignature[] $signatures
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function formatSignatures(array $signatures, ?Section $section, bool $hasTwitter = false): array
+    {
+        if (null === $section) {
+            return [];
+        }
+
+        $formatted = [];
+        foreach ($signatures as $signature) {
+            $result = $this->journalistsDataTransformer
+                ->write($signature->aliasId, $signature->journalist, $section, $hasTwitter)
+                ->read();
+            if (!empty($result)) {
+                $formatted[] = $result;
+            }
+        }
+
+        return $formatted;
     }
 
     /**

@@ -10,7 +10,7 @@ use Ec\Section\Domain\Model\Section;
 final readonly class ResolvedEditorial
 {
     /**
-     * @param array<string, mixed> $signatures
+     * @param ResolvedSignature[] $signatures
      * @param array<string, mixed>|null $multimedia
      * @param array<string, mixed>|null $multimediaOpening
      * @param ResolvedInsertedNews[] $insertedNews
