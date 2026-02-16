@@ -4,6 +4,7 @@ namespace App;
 
 use App\DependencyInjection\Compiler\BodyDataTransformerCompiler;
 use App\DependencyInjection\Compiler\EditorialOrchestratorCompiler;
+use App\DependencyInjection\Compiler\EditorialPresenterCompiler;
 use App\DependencyInjection\Compiler\MediaDataTransformerCompiler;
 use App\DependencyInjection\Compiler\MultimediaFactoryCompiler;
 use App\DependencyInjection\Compiler\MultimediaOrchestratorCompiler;
@@ -28,5 +29,6 @@ class Kernel extends BaseKernel
         $container->addCompilerPass(new MultimediaOrchestratorCompiler());
         $container->addCompilerPass(new WidgetLegacyCreatorHandlerCompiler());
         $container->addCompilerPass(new WidgetDataTransformerCompiler());
+        $container->addCompilerPass(new EditorialPresenterCompiler());
     }
 }
