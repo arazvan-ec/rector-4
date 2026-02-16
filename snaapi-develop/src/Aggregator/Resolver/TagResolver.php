@@ -6,6 +6,8 @@ namespace App\Aggregator\Resolver;
 
 use Ec\Editorial\Domain\Model\NewsBase;
 use Ec\Tag\Domain\Model\QueryTagClient;
+use GuzzleHttp\Promise\Utils;
+use Http\Promise\Promise;
 use Psr\Log\LoggerInterface;
 
 final class TagResolver implements EditorialResolverInterface
@@ -27,16 +29,38 @@ final class TagResolver implements EditorialResolverInterface
 
     public function resolve(NewsBase $editorial, ResolverContext $context): ResolverResult
     {
-        $tags = [];
+        $promises = [];
+        $tagIds = [];
 
         foreach ($editorial->tags()->getArrayCopy() as $tag) {
             try {
-                $tags[] = $this->queryTagClient->findTagById($tag->id());
+                $promises[] = $this->queryTagClient->findTagById($tag->id(), true);
+                $tagIds[] = $tag->id();
             } catch (\Throwable $exception) {
-                $this->logger->warning('Failed to resolve tag', [
+                $this->logger->warning('Failed to initiate async tag request', [
                     'tagId' => $tag->id(),
                     'error' => $exception->getMessage(),
                 ]);
+            }
+        }
+
+        $tags = [];
+
+        if (!empty($promises)) {
+            /** @var array<int, array{state: string, value?: mixed, reason?: \Throwable}> $results */
+            $results = Utils::settle($promises)->wait();
+
+            foreach ($results as $index => $result) {
+                if (Promise::FULFILLED === $result['state']) {
+                    $tags[] = $result['value'];
+                } else {
+                    $this->logger->warning('Failed to resolve tag', [
+                        'tagId' => $tagIds[$index] ?? 'unknown',
+                        'error' => $result['reason'] instanceof \Throwable
+                            ? $result['reason']->getMessage()
+                            : 'Unknown error',
+                    ]);
+                }
             }
         }
 
