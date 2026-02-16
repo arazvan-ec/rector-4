@@ -90,6 +90,37 @@ Domain MUST NOT depend on anything above it
 - [ ] One aggregate per transaction
 - [ ] Aggregate root controls access to children
 
+### External API Consumer Patterns
+
+> Only applicable when `architecture-profile.yaml` has `http_client_pattern != "none"` or `external_api_integration` is populated.
+
+#### Vendor SDK Isolation
+- [ ] Vendor SDK classes are NOT imported in Domain/ layer
+- [ ] Vendor SDK classes are NOT imported in Application/ layer
+- [ ] Port interface defined in Domain/ for each external API dependency
+- [ ] Adapter in Infrastructure/ implements the Domain port
+- [ ] Vendor-specific exceptions are caught and translated in Adapter
+- [ ] ResponseMapper translates vendor response to Domain DTO (no vendor types leak)
+
+#### Data Aggregation Architecture
+- [ ] Multi-source aggregates use dedicated Assembler or Factory
+- [ ] Each data source has its own ProviderInterface
+- [ ] Assembler has manageable dependencies (≤7 constructor params)
+- [ ] No single method makes >3 sequential HTTP calls without async grouping
+
+#### Async HTTP Compliance
+- [ ] Independent HTTP calls are grouped for concurrent execution
+- [ ] Async mechanism is appropriate for the stack (see AC-03 in architecture-reference)
+- [ ] Error handling covers partial failures (some calls succeed, some fail)
+- [ ] Timeout configuration exists for external HTTP calls
+
+#### Serialization Separation
+- [ ] Domain entities have NO serialization annotations mixed with business logic
+- [ ] Serialization logic is in dedicated Transformers/Normalizers, not in entities
+- [ ] Platform-specific output uses Strategy pattern or Serialization Profiles
+- [ ] No switch/if-else by platform in serialization code
+- [ ] Each consumer has its own DTO or Serialization Group (not ad-hoc field filtering)
+
 ### SOLID Compliance
 
 #### S - Single Responsibility
@@ -172,6 +203,13 @@ grep -r "javax.persistence\|org.springframework\|jakarta" domain/ 2>/dev/null
 - [ ] Framework code contained here
 - Violations: [list or "None"]
 
+#### External API Layer (if applicable)
+- [ ] ACL properly implemented per external API
+- [ ] Vendor SDK isolation verified
+- [ ] Async HTTP grouping appropriate
+- [ ] Serialization separated from domain
+- Violations: [list or "None"]
+
 ### SOLID Analysis
 
 Read `openspec/specs/architecture-profile.yaml` for project-specific principle relevance.
@@ -185,6 +223,12 @@ Use `/workflow-skill:solid-analyzer --mode=verify --path=src --design=design.md`
 | Interface Segregation | [from profile] | COMPLIANT / NEEDS_WORK / NON_COMPLIANT / N/A | [evidence] |
 | Dependency Inversion | [from profile] | COMPLIANT / NEEDS_WORK / NON_COMPLIANT / N/A | [evidence] |
 | **Global Verdict** | | **[COMPLIANT / NEEDS_WORK / NON_COMPLIANT]** | |
+
+> **API Consumer SOLID Notes**:
+> - SRP violations from fat serializers or fat assemblers count under SRP (rules SRP-006, SRP-007)
+> - DIP violations from vendor SDK imports in Domain count under DIP (rules DIP-005, DIP-006, DIP-007, DIP-008)
+> - OCP violations from platform switching in serializers count under OCP (rule OCP-004)
+> - See `core/architecture-reference.md` section "API Consumer Architecture Patterns" for corrective patterns
 
 ### Violations Found
 
@@ -200,6 +244,63 @@ Use `/workflow-skill:solid-analyzer --mode=verify --path=src --design=design.md`
 ### Recommendations
 1. [Specific recommendation]
 2. [Specific recommendation]
+
+### API Consumer Pattern Assessment (conditional)
+
+> Include this section ONLY when the project consumes external APIs.
+
+| Pattern | Expected | Found | Verdict |
+|---------|----------|-------|---------|
+| Anti-Corruption Layer | Port in Domain + Adapter in Infra | [what was found] | COMPLIANT / NEEDS_WORK / NON_COMPLIANT |
+| Data Assembler | Dedicated assembler for multi-source aggregates | [what was found] | COMPLIANT / N/A |
+| Async HTTP Grouping | Independent calls grouped | [what was found] | COMPLIANT / NEEDS_WORK / N/A |
+| Serialization Isolation | No serialization in domain entities | [what was found] | COMPLIANT / NEEDS_WORK |
+| Multi-Platform Output | Strategy/Groups for different consumers | [what was found] | COMPLIANT / N/A |
+
+### API Architecture Constraint Compliance (conditional)
+
+> Include this section ONLY when `design.md` contains an "## API Architecture Constraints Addressed" section (written by PLAN Step 3.1b).
+
+The planner generated feature-specific constraints from the project's dimensional profile. Verify each mandatory constraint was satisfied in the implementation.
+
+**Source of truth**: `design.md` → "API Architecture Constraints Addressed" section (NOT the diagnostic YAML directly — the diagnostic is a detection artifact, design.md contains the reasoned constraints for THIS feature).
+
+#### Dimensional Context
+
+Read from `design.md`:
+
+| Dimension | Value | Relevant to Feature |
+|-----------|-------|---------------------|
+| Data Flow | [from design.md] | YES/NO |
+| Data Source Topology | [from design.md] | YES/NO |
+| Consumer Diversity | [from design.md] | YES/NO |
+| Dependency Isolation | [from design.md] | YES/NO |
+| Concurrency Model | [from design.md] | YES/NO |
+| Response Customization | [from design.md] | YES/NO |
+
+#### Constraint Compliance
+
+| Constraint (must) | SOLID | Satisfied | Evidence |
+|-------------------|-------|-----------|----------|
+| [from design.md "Constraints Satisfied"] | [DIP/SRP/OCP] | YES / NO | [file:line or violation] |
+
+| Constraint (should) | Addressed | Notes |
+|---------------------|-----------|-------|
+| [from design.md "Constraints Deferred"] | YES / DEFERRED | [justification] |
+
+#### Constraint Verdict
+
+```
+IF any "must" constraint from design.md is NOT satisfied in implementation:
+  → Architecture review = NEEDS_WORK
+  → List violations with the corrective pattern from design.md
+
+IF all "must" constraints satisfied AND some "should" constraints deferred:
+  → Architecture review = COMPLIANT with notes
+
+IF all constraints satisfied:
+  → Architecture review = COMPLIANT
+```
 ```
 
 ## Compound Memory Integration

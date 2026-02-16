@@ -28,7 +28,13 @@ Adapts behavior based on `execution_mode` in `core/providers.yaml`:
 6. **Write implementation** following reference pattern — use Write/Edit tools
 7. **Run tests** (test-runner skill)
 8. **If tests fail** → Bounded Correction Protocol (see `core/rules/testing-rules.md`)
-9. **Check SOLID** (solid-analyzer --mode=verify) — must be COMPLIANT
+9. **Check SOLID + Dimensional Patterns** (solid-analyzer --mode=verify) — must be COMPLIANT
+   - If design.md includes "## API Architecture Constraints Addressed", verify patterns are implemented:
+     - AC-01 constraints → Anti-corruption layer present (Port + Adapter + Mapper)?
+     - AC-02 constraints → Assembler + Provider pattern present?
+     - AC-03 constraints → Independent API calls grouped concurrently (not sequential)?
+     - AC-04 constraints → Per-platform transformers present?
+   - Patterns marked "must" in design but absent in code = BLOCKER (enter BCP correction loop)
 10. **Fix lint** (lint-fixer skill)
 11. **Checkpoint** — update `tasks.md`
 

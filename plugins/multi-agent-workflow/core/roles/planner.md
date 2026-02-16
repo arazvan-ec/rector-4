@@ -24,6 +24,11 @@
    - Run `/workflow-skill:solid-analyzer --mode=baseline --path=src/target`
    - Read `core/architecture-reference.md` for principles and patterns reference
    - Reject options that are NON_COMPLIANT per solid-analyzer
+   - **Dimensional Analysis** — if `openspec/specs/api-architecture-diagnostic.yaml` exists:
+     - Read the diagnostic and filter dimensions relevant to this feature
+     - Reason about constraints per dimension (see `commands/workflows/plan.md` Step 3.1b)
+     - Map constraints to corrective patterns (AC-01 through AC-04 in `core/architecture-reference.md`)
+     - Document dimensional constraints in design.md section "## API Architecture Constraints Addressed"
 4. **Create Task Breakdown** — tasks by concern with:
    - Clear acceptance criteria
    - Reference files (existing code patterns to follow)

@@ -11,6 +11,28 @@ When confidence in classifying a user request is below 60%, use these templates 
 
 ---
 
+## Meta Prompt: Question Every Decision
+
+Use this mini-template before proposing a final workflow when context is incomplete:
+
+```markdown
+## Validación de Decisiones
+
+Antes de avanzar, voy a desafiar la propuesta inicial para evitar supuestos incorrectos:
+
+1. **Decisión inicial**: [qué propongo hacer]
+2. **Alternativa 1**: [opción] — descartada por [tradeoff]
+3. **Alternativa 2**: [opción] — descartada por [tradeoff]
+
+**Supuestos que necesito confirmar contigo**:
+- [supuesto crítico 1]
+- [supuesto crítico 2]
+
+**Preguntas bloqueantes** (si no se responden, no ejecuto):
+1. [pregunta sobre alcance]
+2. [pregunta sobre restricciones]
+```
+
 ## General Routing Prompt
 
 Use this when you can't determine the type of work:

@@ -179,6 +179,25 @@ npm run test:e2e -- feature-name
    - [ ] Entities have behavior, not just getters
    - [ ] Value objects are immutable
 
+3b. **Dimensional Constraint Compliance** (if design.md contains "## API Architecture Constraints Addressed"):
+
+   > QA verifies that dimensional constraints from design.md were IMPLEMENTED,
+   > NOT whether the constraints were correct (that's the planner's responsibility).
+
+   - [ ] Each "must" constraint has corresponding code (with file path evidence)
+   - [ ] "should" constraints either implemented or deferred with documented rationale
+   - [ ] Patterns referenced (AC-01/02/03/04) are present in code
+   - [ ] No new vendor SDK imports leaked into Domain/Application layers
+
+   Verification:
+   # 1. Read constraint table from design.md
+   Read: openspec/changes/${FEATURE_ID}/design.md → "API Architecture Constraints Addressed"
+
+   # 2. For each "must" constraint, verify in code
+   # COMPLIANT → constraint satisfied with evidence
+   # NEEDS_WORK → partially satisfied
+   # NON_COMPLIANT on "must" → REJECT
+
 4. Test Coverage:
    - Backend: >80% required, actual: [X]%
    - Frontend: >70% required, actual: [X]%

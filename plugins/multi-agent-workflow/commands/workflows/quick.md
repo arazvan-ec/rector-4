@@ -22,6 +22,7 @@ USE QUICK MODE when ALL of these are true:
   ✅ Task affects ≤ 3 files
   ✅ No architectural decisions required
   ✅ No new entities, endpoints, or business rules
+  ✅ No dimensional complexity increase (doesn't add new external APIs, consumers, or async requirements)
   ✅ Clear "done" criteria (you know when it's finished)
   ✅ Low risk (not auth, security, payment, data migration)
 
@@ -31,6 +32,7 @@ DO NOT use Quick Mode for:
   ❌ Tasks requiring multi-agent coordination
   ❌ Tasks where scope is unclear
   ❌ Refactoring that changes architecture
+  ❌ Tasks that change the project's dimensional profile (adding external API, new consumer platform, introducing async)
 ```
 
 ## How Quick Mode Is Triggered

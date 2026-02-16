@@ -197,6 +197,25 @@ Document what should be avoided AND where progress slowed:
 - Add "Error Scenarios" section to spec template
 - Create validation rules library (shared between BE/FE)
 - Document security patterns in project_specific.md
+
+### Dimensional Learnings
+
+After feature completion, capture dimensional insights:
+
+1. **Dimensional accuracy**: Did the diagnostic (from `/workflows:discover`) correctly classify the project's dimensions for this feature?
+   - If YES: Diagnostic is reliable for this dimension
+   - If NO: Document what was wrong and why (e.g., "diagnostic said synchronous but feature required async")
+
+2. **Dimensional drift**: Did this feature change any dimension?
+   - New external API added? → `data_source_topology` may have changed
+   - New consumer platform? → `consumer_diversity` may have changed
+   - Async patterns introduced? → `concurrency_model` may have changed
+   - If any dimension changed → recommend running `/workflows:discover --refresh` to update diagnostic
+
+3. **Constraint effectiveness**: Were the dimensional constraints from design.md useful during implementation?
+   - Which constraints prevented bugs or bad patterns?
+   - Which constraints felt unnecessary or wrong?
+   - Feed back to improve constraint rules in `core/templates/api-architecture-diagnostic.yaml`
 ```
 
 ### Step 3b: Update Agent Compound Memory
@@ -635,6 +654,8 @@ The spec-merger skill:
 - [ ] Added entry to compound_log.md
 - [ ] Created/updated templates if applicable
 - [ ] Estimated time savings for future work
+- [ ] **Captured dimensional learnings** (diagnostic accuracy, drift, constraint effectiveness)
+- [ ] **Recommended diagnostic refresh** if any dimension changed
 - [ ] **Generated spec diff report** (Step 7)
 - [ ] **Updated project specs** (Step 8, unless --update-specs=false)
   - [ ] Updated/created entity specs

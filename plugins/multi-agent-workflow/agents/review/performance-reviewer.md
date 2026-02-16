@@ -51,6 +51,21 @@ Review code for performance issues and recommend optimizations.
 - [ ] Caching for expensive operations
 - [ ] Background jobs for slow tasks
 
+### Aggregation & Concurrency Performance
+
+When `openspec/specs/api-architecture-diagnostic.yaml` exists and shows `data_source_topology` in [multi_external, mixed_db_external] or `data_flow` == aggregation:
+
+- [ ] Independent external API calls executed concurrently (not sequential)
+- [ ] Timeout handling for slowest external API call
+- [ ] Circuit breaker pattern for external dependencies (if available in framework)
+- [ ] No cascading failures if one external API is slow
+- [ ] Total aggregation latency acceptable (sum of parallel groups, not sum of all calls)
+
+Reference: AC-03 (Async HTTP Call Grouping) in `core/architecture-reference.md`
+
+If `concurrency_model` == synchronous AND `data_source_topology` in [multi_external]:
+  Flag as **MAJOR** performance issue: "Sequential HTTP calls to N independent sources"
+
 ### API Performance
 - [ ] Response time < 200ms (p95)
 - [ ] Appropriate HTTP caching headers

@@ -38,6 +38,11 @@
 ### Phase 4: Code Quality
 - **TDD Compliance** (CRITICAL): Verify git history shows tests committed BEFORE implementation
 - Architecture compliance: verify layer rules are followed
+- **Dimensional Constraint Compliance**: If design.md contains "## API Architecture Constraints Addressed":
+  - Verify each "must" constraint was satisfied in code (file paths as evidence)
+  - Verify "should" constraints are either satisfied or explicitly deferred with rationale
+  - Reference patterns AC-01 through AC-04 from `core/architecture-reference.md`
+  - If any "must" constraint is not satisfied → REJECTED
 - Code style: project linter passes
 - Security: No secrets, input validation, no injection vulnerabilities
 

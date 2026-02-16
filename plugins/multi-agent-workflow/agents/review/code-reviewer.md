@@ -73,6 +73,31 @@ These apply to ALL stacks:
 - [ ] No circular dependencies
 - [ ] Interfaces used for external dependencies
 
+### API Architecture Patterns (Cross-Stack)
+
+When `openspec/specs/api-architecture-diagnostic.yaml` exists, apply these checks before stack-specific ones:
+
+**AC-01: Vendor SDK Isolation** (if external APIs consumed)
+- [ ] Vendor SDK imports isolated to Infrastructure layer
+- [ ] Response mapping layer exists (vendor types → domain DTOs)
+- [ ] Domain uses only project's interfaces, not vendor classes
+
+**AC-02: Data Assembler** (if aggregating 3+ sources)
+- [ ] Each data source has its own Provider/Port interface
+- [ ] Assembler/orchestrator coordinates without business logic
+- [ ] Provider dependency count reasonable (≤7)
+
+**AC-03: Async HTTP Grouping** (if async-capable framework + aggregation)
+- [ ] Independent API calls grouped concurrently
+- [ ] Not sequential unless data-dependent
+
+**AC-04: Multi-Platform Serialization** (if multi-platform consumers)
+- [ ] Domain entities agnostic to consumer response shape
+- [ ] Per-platform transformers/DTOs exist
+- [ ] Serialization logic not in domain entities
+
+Reference: `core/architecture-reference.md` → API Consumer Architecture Patterns
+
 ## Stack-Specific Checklists
 
 ### When React/Vue/Angular detected (frontend)

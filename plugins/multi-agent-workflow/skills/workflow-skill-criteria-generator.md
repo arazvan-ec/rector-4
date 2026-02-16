@@ -149,6 +149,29 @@ Questions about long-term alignment:
 | Future migration | How hard to migrate if we change strategy? | Low |
 | Industry alignment | Is this a well-supported pattern? | Medium |
 
+### 6. API Architecture Dimensional Criteria (Auto-Loaded)
+
+> **Activation**: Only when `openspec/specs/api-architecture-diagnostic.yaml` exists. Criteria are auto-loaded from the diagnostic's dimensional analysis — no manual configuration needed.
+
+When the API architecture diagnostic exists, automatically include criteria derived from the project's dimensional classification:
+
+| ID | Criterion | Source Dimension | Weight | Condition |
+|----|-----------|-----------------|--------|-----------|
+| C-DIM-01 | Dependency isolation compliance | `dependency_isolation` | Critical | When value != `fully_isolated` and != `no_externals` |
+| C-DIM-02 | Consumer response separation | `consumer_diversity` | High | When value != `single_consumer` |
+| C-DIM-03 | Concurrency optimization | `concurrency_model` | Medium | When `sequential_bottlenecks` detected |
+| C-DIM-04 | Data flow boundary enforcement | `data_flow` | High | Always (ensures transformation boundaries exist) |
+| C-DIM-05 | Response shaping architecture | `response_customization` | High | When value != `uniform` |
+
+**How to use**: Read the diagnostic file, check each dimension's value, and include the corresponding criterion only when its condition is met. Reference the diagnostic's `constraint_summary.must` for the specific constraint text to evaluate against.
+
+**Scoring guide for dimensional criteria**:
+- Score 5: Design fully satisfies the constraint with correct pattern (from `pattern_mapping`)
+- Score 4: Constraint addressed but pattern implementation has minor gaps
+- Score 3: Constraint partially addressed
+- Score 2: Constraint acknowledged but not addressed in design
+- Score 1: Design violates the constraint
+
 ## Generation Process
 
 ### Step 1: Context Analysis
@@ -395,6 +418,34 @@ Q8: Rate team's comfort with these patterns (1-5):
    - CQRS: [dev input]
    - Simple CRUD: [dev input]
    - Microservices: [dev input]
+
+== API Architecture Dimensions (only if api-architecture-diagnostic.yaml exists) ==
+
+Q13: Does this feature interact with external APIs (consume or aggregate data)?
+   (1) Yes, it consumes external APIs
+   (2) Yes, it aggregates data from multiple sources
+   (3) No external API interaction
+> [dev input]
+
+Q14: Who consumes the output of this feature?
+   (1) Single consumer (one web app or one mobile app)
+   (2) Multiple platforms (web + mobile + etc.)
+   (3) Other internal services
+   (4) Public/third-party developers
+> [dev input]
+
+Q15: How different must the response be per consumer?
+   (1) Same response for everyone
+   (2) Same structure, filtered fields
+   (3) Different structure per consumer
+   (4) Varies by auth level, role, or context
+> [dev input]
+
+Q16: Are there performance requirements for external calls?
+   (1) Yes, latency-sensitive (concurrent calls needed)
+   (2) No strict requirements (sequential is acceptable)
+   (3) Not applicable (no external calls)
+> [dev input]
 
 == Generating Criteria ==
 

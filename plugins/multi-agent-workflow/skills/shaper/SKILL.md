@@ -131,6 +131,24 @@ A binary decision matrix mapping requirements to shape coverage.
 - Notes explain failures, not successes
 - Run fit check AFTER updating shape or requirements
 
+### Dimensional Feasibility
+
+When `openspec/specs/api-architecture-diagnostic.yaml` exists, evaluate each shape's dimensional impact:
+
+For each shape, ask:
+1. Does this shape introduce new external API dependencies? (data_source_topology change)
+2. Does this shape serve new consumer platforms? (consumer_diversity change)
+3. Does this shape require concurrent operations? (concurrency_model change)
+4. Does this shape add vendor SDK dependencies? (dependency_isolation risk)
+
+**Rules**:
+- A shape that increases dimensional complexity requires more architectural investment
+- Flag dimensional increases in fit check notes (they are not failures, but cost factors)
+- A shape that stays within current dimensional bounds is lower risk
+- If two shapes have similar R coverage but different dimensional impacts, prefer the one with lower dimensional cost
+
+Reference: `core/architecture-reference.md` → API Consumer Architecture Patterns (AC-01 through AC-04)
+
 ### Rotated Fit Check (A x R)
 
 Shows the same data rotated: parts as rows, requirements as columns.

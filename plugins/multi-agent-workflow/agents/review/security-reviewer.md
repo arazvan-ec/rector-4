@@ -48,6 +48,19 @@ Review code for security vulnerabilities based on OWASP Top 10 and security best
 - [ ] No direct object references exposed
 - [ ] Admin endpoints properly protected
 
+### Multi-Consumer Security
+
+When `openspec/specs/api-architecture-diagnostic.yaml` exists and shows `consumer_diversity` in [multi_platform, public_api, mixed]:
+
+- [ ] Different auth requirements per consumer enforced (e.g., mobile token vs web session)
+- [ ] Response shaping does NOT leak data to unprivileged consumers
+- [ ] Platform-specific DTOs/transformers do not expose fields intended for other consumers
+- [ ] Rate limiting appropriate per consumer type
+- [ ] CORS/origin restrictions per consumer platform
+
+If `response_customization` == per_consumer_shaped:
+  Verify that consumer detection (header, token type) cannot be spoofed to access other consumer's data shape
+
 ### Input Validation
 - [ ] All user input validated server-side
 - [ ] SQL injection prevented (parameterized queries/ORM)

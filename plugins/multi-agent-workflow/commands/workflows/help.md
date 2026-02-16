@@ -6,7 +6,7 @@ argument_hint: [topic]
 
 # /workflows:help - Quick Help and Navigation
 
-**Version**: 2.0.0
+**Version**: 2.1.0
 **Category**: Reference
 
 ---
@@ -165,6 +165,7 @@ Every request follows this flow. Stages cannot be skipped.
 | DDD                       | Domain-Driven Design architecture              |
 | SOLID Constraint          | Phase 3 solutions must be COMPLIANT per contextual analysis |
 | Context Engineering       | Curate what information the model sees         |
+| Decision-Challenge Loop   | Challenge assumptions + compare alternatives   |
 | context: fork             | Isolated agents returning summaries only       |
 
 ### Important Files

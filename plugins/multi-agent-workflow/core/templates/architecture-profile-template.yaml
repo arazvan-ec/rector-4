@@ -36,6 +36,26 @@ patterns_detected:
   error_handling: ""               # exceptions | result-types | error-codes | mixed
   async_pattern: ""                # promises | async-await | callbacks | coroutines | channels | none
   testing_approach: ""             # tdd | test-after | minimal | none
+  http_client_pattern: ""          # vendor-sdk | raw-http-client | api-platform | none
+                                   # vendor-sdk: Uses Guzzle, Symfony HttpClient, etc. via vendor packages
+                                   # raw-http-client: Uses curl/file_get_contents/fetch directly
+                                   # api-platform: Uses API Platform or similar framework-level abstraction
+  external_api_integration: ""     # acl | direct | adapter-only | none
+                                   # acl: Full Anti-Corruption Layer (Port + Adapter + Mapper)
+                                   # direct: Vendor SDK called directly from Application/Domain
+                                   # adapter-only: Adapter exists but no domain port interface
+  serialization_strategy: ""       # framework-serializer | manual-dto | transformer-strategy | mixed | none
+                                   # framework-serializer: Uses Symfony Serializer, JMS, etc. with groups
+                                   # manual-dto: Manual DTO mapping in controllers/services
+                                   # transformer-strategy: Strategy pattern with platform-specific transformers
+  multi_platform_output: ""        # strategy-per-consumer | serialization-groups | single-format | none
+                                   # strategy-per-consumer: Separate DTO/Transformer per platform
+                                   # serialization-groups: Framework serialization groups/profiles
+                                   # single-format: One response format for all consumers
+  data_aggregation_pattern: ""     # assembler | single-source | inline | none
+                                   # assembler: Dedicated assembler/builder for multi-source aggregates
+                                   # single-source: Each entity from a single data source
+                                   # inline: Multi-source data fetched inline in services (anti-pattern)
 
 solid_relevance:
   # Each principle has a relevance level for THIS project.
@@ -84,6 +104,25 @@ conventions:
   #   repository_interface: src/Domain/Port/OrderRepositoryInterface.php
   #   repository_impl: src/Infrastructure/Persistence/DoctrineOrderRepository.php
   #   controller: src/Infrastructure/Http/Controller/OrderController.php
+  #   http_adapter: src/Infrastructure/External/VendorApiAdapter.php
+  #   response_mapper: src/Infrastructure/External/VendorResponseMapper.php
+  #   provider_interface: src/Domain/Port/ContentProviderInterface.php
+  #   dto_transformer: src/Application/Transformer/MobileEditorialTransformer.php
+  #   data_assembler: src/Application/Assembler/EditorialAssembler.php
+
+external_apis_consumed: []
+# Example:
+# external_apis_consumed:
+#   - name: "Content Management API"
+#     sdk: "vendor/content-cms-sdk"
+#     adapter: "src/Infrastructure/External/CmsApiAdapter.php"
+#     port: "src/Domain/Port/ContentProviderInterface.php"
+#     acl_compliant: true
+#   - name: "User Profile Service"
+#     sdk: "guzzlehttp/guzzle"
+#     adapter: "src/Infrastructure/External/UserProfileClient.php"
+#     port: ""       # Missing! DIP violation
+#     acl_compliant: false
 
 quality_thresholds:
   # Adaptive thresholds, discovered from project averages + margin

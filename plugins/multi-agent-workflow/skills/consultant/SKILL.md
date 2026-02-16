@@ -88,6 +88,39 @@ Scanning directory structure...
 | Presentation | src/presentation/ | ✅ Controllers, DTOs |
 ```
 
+### Dimensional Profile Assessment
+
+Measure the project's API architecture dimensions (feeds into `/workflows:discover` Step 6c):
+
+| Dimension | Detection Method | Evidence |
+|---|---|---|
+| Data Flow | Count controllers (egress) + HTTP clients (ingress) | [files found] |
+| Data Source Topology | Count DB schemas + external API adapters | [files found] |
+| Consumer Diversity | Find platform-specific DTOs/transformers | [files found] |
+| Dependency Isolation | Check vendor SDK imports in Domain/Application | [results] |
+| Concurrency Model | Detect async patterns vs sequential HTTP calls | [patterns found] |
+| Response Customization | Find serializer groups/transformers per consumer | [files found] |
+
+**Output** (add to project profile under "## API Architecture Dimensional Profile"):
+
+```markdown
+| Dimension | Value | Confidence | Evidence |
+|---|---|---|---|
+| Data Flow | [value] | [HIGH/MEDIUM/LOW] | [evidence summary] |
+| Data Source Topology | [value] | [HIGH/MEDIUM/LOW] | [evidence summary] |
+| Consumer Diversity | [value] | [HIGH/MEDIUM/LOW] | [evidence summary] |
+| Dependency Isolation | [value] | [HIGH/MEDIUM/LOW] | [evidence summary] |
+| Concurrency Model | [value] | [HIGH/MEDIUM/LOW] | [evidence summary] |
+| Response Customization | [value] | [HIGH/MEDIUM/LOW] | [evidence summary] |
+
+Risks:
+  - [dimension combination risks, e.g., "synchronous + aggregation = sequential bottleneck"]
+```
+
+This profile is saved to `.ai/project/intelligence/project-profile.md` and consumed by `/workflows:discover` for formal diagnostic generation.
+
+Reference: `core/templates/api-architecture-diagnostic.yaml` for dimension taxonomy and values.
+
 ### Layer 3: Code Convention Analysis
 
 ```markdown

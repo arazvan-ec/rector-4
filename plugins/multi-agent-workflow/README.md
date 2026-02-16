@@ -168,6 +168,10 @@ Phase 3 (plan) solutions must be COMPLIANT across all relevant SOLID principles.
 
 Think before coding, simplicity first, surgical changes, goal-driven execution. Details in `core/docs/KARPATHY_PRINCIPLES.md`.
 
+### Decision-Challenge Loop
+
+Before selecting a workflow, the router challenges assumptions, compares alternatives, and asks blocking questions for missing constraints instead of guessing. This improves routing quality for ambiguous requests and sensitive domains.
+
 ---
 
 ## Context Engineering

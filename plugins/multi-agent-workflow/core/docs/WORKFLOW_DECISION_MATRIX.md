@@ -66,6 +66,21 @@
 | **Complex** | > 8 hours | 15+ files | task-breakdown | Comprehensive |
 | **Architectural** | Days/weeks | System-wide | task-breakdown + design agents | Deep analysis |
 
+### By Dimensional Impact
+
+When `openspec/specs/api-architecture-diagnostic.yaml` exists, consider the request's impact on the project's dimensional profile:
+
+| Dimensional Change | Current → New | Complexity Impact | Minimum Workflow |
+|---|---|---|---|
+| No dimension change | (stays same) | None | Per complexity assessment |
+| Adds consumer diversity | single → multi_platform | Medium | task-breakdown |
+| Adds data aggregation | single_db → multi_external | High | task-breakdown + shape |
+| Adds external vendor | no_externals → single_external | Medium | task-breakdown |
+| Introduces concurrency | synchronous → async_capable | Medium | task-breakdown |
+| Multiple changes | e.g., sync+single → async+multi_external | Very High | shape + task-breakdown |
+
+**Rule**: If a request increases dimensional complexity, escalate to at least task-breakdown workflow even if the request appears simple by file count or time estimate.
+
 ### By Technology/Area Touched
 
 | Area | Trust Level | Minimum Workflow | Additional Requirements |

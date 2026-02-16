@@ -101,6 +101,56 @@ Detection rules adapt to the project's stack from the profile:
 - ISP: Check module export surface — minimal public API
 - DIP: Check for dependency injection via function parameters
 
+**API Consumer Patterns (Cross-Stack)**:
+
+> **Dimensional Optimization**: When `openspec/specs/api-architecture-diagnostic.yaml` exists, use its dimensional values to skip irrelevant rules and reduce false positives:
+>
+> | Dimension Value | Rules to SKIP | Reason |
+> |----------------|---------------|--------|
+> | `dependency_isolation == fully_isolated` | DIP-005, DIP-006, DIP-007, DIP-008 | All externals already behind proper abstraction |
+> | `dependency_isolation == no_externals` | DIP-005, DIP-006, DIP-007, DIP-008, SRP-007, SRP-008 | No external dependencies to isolate |
+> | `consumer_diversity == single_consumer` | SRP-006, OCP-004 | No multi-platform serialization needed |
+> | `response_customization == uniform` | SRP-006, OCP-004 | No response variation to manage |
+> | `concurrency_model == not_applicable` | Async HTTP analysis | No concurrent operations to optimize |
+> | `concurrency_model == fully_concurrent` | Async HTTP analysis | Already using concurrent patterns |
+>
+> When diagnostic does NOT exist, run all rules (default behavior).
+
+When `architecture-profile.yaml` indicates `http_client_pattern != "none"`:
+- **SRP**: Check serializers/transformers for platform switching logic (SRP-006). Check assemblers for too many data sources (SRP-007). Check for HTTP calls mixed with business logic (SRP-008).
+- **OCP**: Check serialization/transformation code for if/switch by consumer platform (OCP-004).
+- **DIP**: Check Domain/ and Application/ for vendor HTTP SDK imports (DIP-005, DIP-006). Check for port interfaces matching each HTTP adapter (DIP-007). Check for vendor response types outside Infrastructure (DIP-008).
+
+Detection Commands (API Consumer):
+
+```bash
+# SRP-006: Fat Serializer
+find . -name "*Transformer*" -o -name "*Serializer*" -o -name "*Normalizer*" | while read f; do
+  wc -l "$f"     # >200 LOC = potential SRP-006
+done
+grep -r "if.*platform\|switch.*format\|mobile.*web" $(find . -name "*Transformer*" -o -name "*Normalizer*") 2>/dev/null
+
+# SRP-007: Fat Assembler (>7 constructor dependencies)
+grep -A20 "__construct\|constructor\|func New" $(find . -name "*Assembler*" -o -name "*Aggregator*") 2>/dev/null
+
+# DIP-005/006: Vendor SDK in Domain/Application
+# PHP
+grep -r "use GuzzleHttp\|use Symfony\\Component\\HttpClient\|use Symfony\\Contracts\\HttpClient" src/Domain/ src/Application/ 2>/dev/null
+# TypeScript
+grep -r "import.*from.*axios\|import.*from.*node-fetch" src/domain/ src/application/ 2>/dev/null
+# Go
+grep -r "\"net/http\"\|\"github.com.*client\"" domain/ internal/domain/ 2>/dev/null
+
+# DIP-007: Missing Port for External API
+find . -path "*/Infrastructure/External/*" -name "*Adapter*" -o -name "*Client*" | while read adapter; do
+  class=$(basename "$adapter" | sed 's/\..*//')
+  grep -rl "interface.*${class}\|${class}Interface" src/Domain/ src/domain/ 2>/dev/null || echo "MISSING PORT for: $adapter"
+done
+
+# OCP-004: Platform switching in serializers
+grep -rn "if.*mobile\|if.*platform\|switch.*platform\|switch.*format" $(find . -name "*Transform*" -o -name "*Serializ*" -o -name "*Normaliz*") 2>/dev/null
+```
+
 ### Step 4: Compare Against References
 
 If the profile has `reference_files`:
@@ -193,10 +243,20 @@ NON_COMPLIANT  → At least one principle with relevance≥high is NON_COMPLIANT
 - Domain/ has zero imports from Infrastructure/
 - All dependencies injected via constructor interfaces
 
+## API Consumer Patterns (if detected)
+
+- Anti-Corruption Layer: `src/Domain/Port/ContentProviderInterface.php` + `src/Infrastructure/External/CmsApiAdapter.php` — COMPLIANT
+- Vendor SDK Leakage: `src/Application/Service/EditorialService.php` imports GuzzleHttp — DIP-005 VIOLATION
+- Fat Serializer: `src/Application/Transformer/EditorialTransformer.php` — 380 LOC with platform switch — SRP-006 + OCP-004 VIOLATIONS
+- Async HTTP: Sequential calls detected in `EditorialAssembler` — 5 HTTP calls in sequence — NEEDS_WORK
+
 ## Recommendations for Design Phase
 - OrderService needs decomposition (SRP violation)
 - Consider the project's existing Strategy pattern for extracting algorithms
 - Follow the Reference good files for naming and structure conventions
+- Address vendor SDK leakage with Anti-Corruption Layer (see AC-01 in architecture-reference)
+- Decompose fat serializer with DTO Transformer Strategy (see AC-04)
+- Group sequential HTTP calls with async facade (see AC-03)
 ```
 
 **Who consumes this**: The agent in Plan Step 3.2 uses this to design solutions coherent with the project.
@@ -392,6 +452,9 @@ If `openspec/specs/architecture-profile.yaml` does not exist (project hasn't run
 | SRP-003 | Too Many Dependencies | Constructor params | > max_constructor_deps from profile |
 | SRP-004 | Mixed Concerns | Domain + Infrastructure imports | Any mix |
 | SRP-005 | Multiple Responsibilities | Class name analysis (Manager, Handler, etc.) | Name pattern |
+| SRP-006 | Fat Serializer/Transformer | Class with serialization logic + platform switching | Class name contains "Serializer"/"Transformer" AND has if/switch by platform |
+| SRP-007 | Fat Assembler | Service assembling data from >5 sources in one method | Method with >5 distinct HTTP/provider calls; class with >7 provider dependencies |
+| SRP-008 | Mixed HTTP + Business | HTTP client calls mixed with business logic in same class | Domain/Application class importing HTTP client classes |
 
 ### OCP Detection
 
@@ -400,6 +463,8 @@ If `openspec/specs/architecture-profile.yaml` does not exist (project hasn't run
 | OCP-001 | Type Switching | switch/if-else by type | Any occurrence |
 | OCP-002 | Instanceof Chains | Multiple instanceof/is checks | >2 in method |
 | OCP-003 | Hardcoded Types | String type comparisons | Any occurrence |
+| OCP-004 | Platform Switching in Serializer | if/switch by platform in serialization code | `if ($platform === 'mobile')` or `switch($format)` in Transformer/Serializer |
+| OCP-005 | Hardcoded External API Config | Inline URLs, API keys, or vendor config in adapter | Hardcoded strings matching URL/key patterns in Adapter classes |
 
 ### LSP Detection
 
@@ -425,6 +490,10 @@ If `openspec/specs/architecture-profile.yaml` does not exist (project hasn't run
 | DIP-002 | Layer Violation | Domain→Infrastructure import | Any occurrence |
 | DIP-003 | Missing Interface | Service/Repository without interface | Any occurrence |
 | DIP-004 | Static Calls | Static method calls in domain | Any occurrence |
+| DIP-005 | Vendor SDK in Domain | Domain layer imports vendor HTTP SDK classes | Domain/ files importing Guzzle, HttpClient, axios, requests, net/http |
+| DIP-006 | Vendor SDK in Application | Application layer imports vendor HTTP SDK classes | Application/ files importing vendor HTTP client packages |
+| DIP-007 | Missing Port for External API | HTTP adapter exists but no domain interface/port | Infrastructure adapter class with no corresponding interface in Domain/ |
+| DIP-008 | Vendor Response Types Leaked | Vendor response objects used outside Infrastructure | Vendor SDK response types appearing in Application/Domain type hints |
 
 ---
 

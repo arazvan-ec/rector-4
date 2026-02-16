@@ -92,7 +92,10 @@ TASK EXECUTION LOOP:
   5. WRITE implementation following pattern — Write/Edit tools
   6. RUN tests (test-runner)
   7. IF fail → analyze + fix (BCP, max 10 iterations)
-  8. CHECK SOLID (solid-analyzer --mode=verify) — must be COMPLIANT
+  8. CHECK SOLID + DIMENSIONAL PATTERNS (solid-analyzer --mode=verify) — must be COMPLIANT
+     IF design.md has "## API Architecture Constraints Addressed":
+       - Verify AC patterns present: AC-01 (anti-corruption), AC-02 (assembler), AC-03 (async), AC-04 (transformers)
+       - "must" constraint absent in code → enter BCP correction loop
   9. FIX lint (lint-fixer)
   10. CHECKPOINT → update tasks.md
   11. → Next task

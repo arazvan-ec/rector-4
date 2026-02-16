@@ -548,6 +548,176 @@ Before designing solutions, understand the current state:
 # - Recommended patterns: [list]
 ```
 
+### Step 3.1b: Reason About API Architecture Constraints (if diagnostic exists)
+
+When DISCOVER has classified the project's API architecture dimensions, this step **reasons** about what constraints apply to THIS specific feature. The diagnostic file describes reality (detection); this step derives what must be true (reasoning).
+
+```bash
+# Check for API architecture dimensional profile
+DIAGNOSTIC="openspec/specs/api-architecture-diagnostic.yaml"
+if [ -f "$DIAGNOSTIC" ]; then
+  echo "API Architecture Dimensional Profile found. Reasoning about constraints for this feature..."
+fi
+```
+
+**When diagnostic does NOT exist**: Skip this step. The project either has no API complexity or has not run `/workflows:discover`.
+
+**When diagnostic exists**, the planner executes 4 reasoning steps:
+
+#### Step 3.1b.1: Filter Relevant Dimensions
+
+Not all project dimensions affect every feature. Before generating constraints, determine which dimensions are relevant:
+
+```
+FOR each dimension in [data_flow, data_source_topology, consumer_diversity,
+                       dependency_isolation, concurrency_model, response_customization]:
+  IF the feature touches code paths affected by this dimension:
+    → Mark as RELEVANT (include in constraint reasoning)
+  ELSE:
+    → Mark as NOT_RELEVANT (skip, document why)
+
+Example:
+  Feature: "Add pagination to list endpoint"
+  - data_flow: RELEVANT (feature serves API responses)
+  - data_source_topology: NOT_RELEVANT (feature doesn't add new data sources)
+  - consumer_diversity: RELEVANT (response format may differ per consumer)
+  - dependency_isolation: NOT_RELEVANT (feature doesn't touch external APIs)
+  - concurrency_model: NOT_RELEVANT (no concurrent operations involved)
+  - response_customization: RELEVANT (pagination may vary per consumer)
+```
+
+#### Step 3.1b.2: Generate Per-Dimension Constraints
+
+For each RELEVANT dimension, apply these reasoning rules to generate constraints:
+
+```
+DATA FLOW constraints:
+  IF primary in [ingress, aggregation, bidirectional]:
+    → MUST: "Inbound data crosses an abstraction boundary before entering Domain" (DIP)
+  IF primary in [egress, bidirectional]:
+    → MUST: "Outbound data shaped by Application/Infrastructure, not Domain" (SRP)
+  IF primary == aggregation:
+    → MUST: "Multi-source assembly coordinated by a dedicated orchestrator" (SRP)
+  IF primary == transformation:
+    → MUST: "Transformation logic isolated in mapper classes" (SRP, OCP)
+  IF primary == passthrough:
+    → SHOULD: "Passthrough logic does not add domain coupling" (DIP)
+
+DATA SOURCE TOPOLOGY constraints:
+  IF value in [single_external, multi_external, mixed_db_external, hybrid]:
+    → MUST: "Each external source accessed through Port interface in Domain" (DIP)
+    → MUST: "Each external source has Adapter implementation in Infrastructure" (DIP)
+  IF value in [multi_external, mixed_db_external, hybrid]:
+    → MUST: "Vendor SDK types do not appear outside Infrastructure layer" (DIP)
+    → MUST: "Each external source has independent Provider interface" (ISP)
+  IF value == event_driven:
+    → MUST: "Event payloads translated to domain types at boundary" (DIP, SRP)
+
+CONSUMER DIVERSITY constraints:
+  IF value in [multi_platform, public_api, mixed]:
+    → MUST: "Each consumer type has its own response transformation" (SRP, OCP)
+    → MUST: "Domain entities contain no serialization annotations or logic" (SRP)
+  IF value == inter_service:
+    → MUST: "API contracts versioned and backward-compatible" (OCP)
+  IF value == public_api:
+    → MUST: "Response format documented and stable"
+
+DEPENDENCY ISOLATION constraints:
+  IF value == direct_coupling:
+    → MUST: "External dependencies in Domain/Application replaced with Port interfaces" (DIP)
+    → MUST: "Vendor SDK instantiation moves to Infrastructure adapters" (DIP)
+  IF value == partially_wrapped:
+    → MUST: "Missing port interfaces created in Domain for each adapter" (DIP)
+    → MUST: "Vendor response types replaced with domain DTOs" (DIP)
+  IF value == fully_isolated:
+    → REVIEW: "Confirm no new vendor SDK types crossed layer boundaries"
+
+CONCURRENCY MODEL constraints (cross-reference with data_source_topology):
+  IF value == synchronous AND topology in [multi_external, hybrid]:
+    → MUST: "Independent external API calls evaluated for concurrent execution" (SRP)
+    → SHOULD: "Sequential HTTP calls to independent sources refactored to concurrent"
+  IF value == async_capable:
+    → SHOULD: "Evaluate whether sequential bottlenecks justify async migration"
+  IF value == fully_concurrent:
+    → MUST: "Concurrent operations handle partial failures gracefully"
+
+RESPONSE CUSTOMIZATION constraints:
+  IF value == parameterized:
+    → MUST: "Field filtering handled in Application layer, not Domain" (SRP)
+  IF value == per_consumer_shaped:
+    → MUST: "Each consumer has dedicated DTO or Transformer" (SRP, OCP)
+    → MUST: "No switch/if-else by consumer type in serialization code" (OCP)
+  IF value == context_dependent:
+    → MUST: "Context resolution happens at boundary (controller/middleware)" (SRP)
+```
+
+#### Step 3.1b.3: Generate Derived Constraints
+
+Check dimension COMBINATIONS that produce compound architectural risks:
+
+```
+IF topology in [multi_external, hybrid] AND isolation == direct_coupling:
+  → CRITICAL: "Multiple external APIs with direct coupling = cascading vendor risk"
+  → Pattern: AC-01 (Anti-Corruption Layer) from architecture-reference.md
+
+IF data_flow == aggregation AND concurrency == synchronous:
+  → WARNING: "Aggregating N sources synchronously = N * avg_latency response time"
+  → Pattern: AC-03 (Async HTTP Grouping) from architecture-reference.md
+
+IF consumer_diversity in [multi_platform, mixed] AND customization == per_consumer_shaped:
+  → "Platform-specific shaping requires Strategy or dedicated Transformers"
+  → Pattern: AC-04 (Multi-Platform Serialization) from architecture-reference.md
+
+IF data_flow == aggregation AND topology in [multi_external, hybrid]:
+  → "Multi-source aggregation requires Assembler + independent Providers"
+  → Pattern: AC-02 (Data Assembler) from architecture-reference.md
+
+IF topology in [multi_external, hybrid] AND concurrency == synchronous:
+  → "Performance bottleneck: N sequential HTTP calls = N * avg_latency"
+  → Pattern: AC-03 (Async HTTP Grouping) from architecture-reference.md
+```
+
+#### Step 3.1b.4: Inject Into Design Phase
+
+Categorize all generated constraints by enforcement level and pass to Step 3.2:
+
+- **MUST constraints** → Mandatory design requirements (SOLID violation if not met)
+- **SHOULD constraints** → Recommended (quality/performance risk if not met)
+- **REVIEW criteria** → What to verify during code review
+
+**Output enrichment**: In `design.md`, add:
+
+```markdown
+## API Architecture Constraints Addressed
+
+**Dimensional Profile**: `openspec/specs/api-architecture-diagnostic.yaml`
+
+### Dimensional Context (relevant to this feature)
+| Dimension | Value | Relevant | Impact on Design |
+|-----------|-------|----------|-----------------|
+| Data Flow | [value] | YES/NO | [how it affects this feature's design] |
+| Data Source Topology | [value] | YES/NO | [how it affects this feature's design] |
+| Consumer Diversity | [value] | YES/NO | [how it affects this feature's design] |
+| Dependency Isolation | [value] | YES/NO | [how it affects this feature's design] |
+| Concurrency Model | [value] | YES/NO | [how it affects this feature's design] |
+| Response Customization | [value] | YES/NO | [how it affects this feature's design] |
+
+### Constraints Satisfied by This Design
+| Constraint (must) | SOLID | How Addressed | Pattern Used |
+|-------------------|-------|---------------|-------------|
+| [constraint text] | [DIP/SRP/OCP/ISP] | [design decision] | [AC-01/02/03/04 or N/A] |
+
+### Constraints Deferred (should)
+| Constraint (should) | Reason for Deferral |
+|---------------------|---------------------|
+| [constraint text] | [why not addressed in this feature] |
+
+### Derived Risks
+| Risk | Severity | Mitigation in Design |
+|------|----------|---------------------|
+| [compound risk from dimension combination] | CRITICAL/WARNING | [how addressed] |
+```
+
 ### Step 3.2: Design Solutions with SOLID
 
 For EACH functional spec, propose a solution that complies with SOLID:
@@ -607,8 +777,11 @@ When designing solutions, select patterns based on the need:
 | Chain of processing steps | **Chain of Responsibility** | SRP, OCP |
 | Encapsulate validation rules | **Value Object** | SRP |
 | Decouple layers | **Dependency Injection** | DIP |
+| Aggregate multi-source data | **Data Assembler + Providers** | SRP, DIP, ISP |
+| Serve multiple consumers/platforms | **DTO Transformer Strategy** | SRP, OCP, LSP |
+| Optimize concurrent HTTP calls | **Async HTTP Facade** | SRP |
 
-See `core/architecture-reference.md` for complete mapping. Consult openspec/specs/architecture-profile.yaml for project patterns.
+See `core/architecture-reference.md` for complete mapping (including AC-01 through AC-04 for API consumer patterns). Consult openspec/specs/architecture-profile.yaml for project patterns.
 
 ### Step 3.4: Verify SOLID Compliance
 
