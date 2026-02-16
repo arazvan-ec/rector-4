@@ -8,20 +8,20 @@
 
 | Task | Status | Verify | Completed At |
 |------|--------|--------|--------------|
-| BE-001: Create ResolvedEditorial DTO | PENDING | PHPStan pass | - |
-| BE-002: Create ResolvedInsertedNews DTO | PENDING | PHPStan pass | - |
-| BE-003: Create ResolvedRecommendedEditorial DTO | PENDING | PHPStan pass | - |
-| BE-004: Create SignatureResolver | PENDING | Unit tests pass | - |
-| BE-005: Create MultimediaResolver | PENDING | Unit tests pass | - |
-| BE-006: Create InsertedNewsResolver | PENDING | Unit tests pass | - |
-| BE-007: Create RecommendedEditorialsResolver | PENDING | Unit tests pass | - |
-| BE-008: Create EditorialAggregator | PENDING | Unit tests pass | - |
-| BE-009: Create EditorialPresenterInterface | PENDING | PHPStan pass | - |
-| BE-010: Create EditorialPresenterRegistry | PENDING | Unit tests pass | - |
-| BE-011: Create AppsEditorialPresenter | PENDING | Snapshot test pass | - |
-| BE-012: Create EditorialPresenterCompiler | PENDING | Unit tests pass | - |
-| BE-013: Simplify EditorialOrchestrator | PENDING | Full suite pass | - |
-| BE-014: Create ServiceCriticality enum | PENDING | PHPStan pass | - |
+| BE-001: Create ResolvedEditorial DTO | COMPLETED | PHPStan pass | 2026-02-16T00:05:00Z |
+| BE-002: Create ResolvedInsertedNews DTO | COMPLETED | PHPStan pass | 2026-02-16T00:05:00Z |
+| BE-003: Create ResolvedRecommendedEditorial DTO | COMPLETED | PHPStan pass | 2026-02-16T00:05:00Z |
+| BE-004: Create SignatureResolver | COMPLETED | Code review | 2026-02-16T00:05:00Z |
+| BE-005: Create MultimediaResolver | COMPLETED | Code review | 2026-02-16T00:06:00Z |
+| BE-006: Create InsertedNewsResolver | COMPLETED | Code review | 2026-02-16T00:06:00Z |
+| BE-007: Create RecommendedEditorialsResolver | COMPLETED | Code review | 2026-02-16T00:06:00Z |
+| BE-008: Create EditorialAggregator | COMPLETED | Code review | 2026-02-16T00:07:00Z |
+| BE-009: Create EditorialPresenterInterface | COMPLETED | PHPStan pass | 2026-02-16T00:05:00Z |
+| BE-010: Create EditorialPresenterRegistry | COMPLETED | Code review | 2026-02-16T00:05:00Z |
+| BE-011: Create AppsEditorialPresenter | COMPLETED | Code review | 2026-02-16T00:07:00Z |
+| BE-012: Create EditorialPresenterCompiler | COMPLETED | Code review | 2026-02-16T00:05:00Z |
+| BE-013: Simplify EditorialOrchestrator | COMPLETED | Code review | 2026-02-16T00:08:00Z |
+| BE-014: Create ServiceCriticality enum | COMPLETED | PHPStan pass | 2026-02-16T00:05:00Z |
 | BE-015: Add degradation to sub-services | PENDING | Degradation tests pass | - |
 | INF-001: Configure httplug cache | PENDING | Integration test | - |
 | INF-002: Create AMQP messages | PENDING | PHPStan pass | - |
@@ -534,7 +534,7 @@
 
 ## Workflow State
 
-**Planner**: COMPLETED | **Implementer**: PENDING | **Reviewer**: PENDING
+**Planner**: COMPLETED | **Implementer**: IN_PROGRESS | **Reviewer**: PENDING
 **Feature**: api-refactoring
 **Started**: 2026-02-15T22:15:00Z
 **Last Updated**: 2026-02-15T23:30:00Z
