@@ -1,0 +1,28 @@
+# Entity Spec: ResolvedSignature
+# Extracted by /workflows:discover --refresh on 2026-02-16
+
+entity:
+  name: "ResolvedSignature"
+  type: "value-object"
+  description: "Cross-layer DTO carrying a raw Journalist domain object. Formatting happens in Presenter, not Aggregator."
+
+  attributes:
+    - name: "aliasId"
+      type: "string"
+      required: true
+      description: "The journalist alias identifier"
+
+    - name: "journalist"
+      type: "Journalist"
+      required: true
+      description: "Raw domain object from journalist-client (not pre-formatted)"
+
+  invariants:
+    - "Carries raw domain objects — NEVER pre-formatted arrays"
+    - "Formatting (to apps format) must happen in Presenter layer only"
+    - "Immutable after construction (final readonly class)"
+
+  source_files:
+    - "snaapi-develop/src/Aggregator/DTO/ResolvedSignature.php"
+
+  extracted_at: "2026-02-16T12:00:00Z"

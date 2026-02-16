@@ -27,6 +27,7 @@ architectural_constraint:
         - "Ec\\*\\Infrastructure\\Client\\*"  # External client implementations
         - "App\\Aggregator\\DTO\\*"  # Own DTOs
         - "App\\Aggregator\\Service\\*"  # Own sub-services
+        - "App\\Aggregator\\Resolver\\*"  # Own resolvers
         - "GuzzleHttp\\Promise\\*"  # Async support
         - "Psr\\Log\\*"  # Logging
       cannot_import:
@@ -78,6 +79,14 @@ architectural_constraint:
       name: "EditorialAggregatorInterface"
       path: "src/Aggregator/EditorialAggregatorInterface.php"
       contract: "aggregate(string $editorialId): ResolvedEditorial"
+
+    resolver:
+      name: "EditorialResolverInterface"
+      path: "src/Aggregator/Resolver/EditorialResolverInterface.php"
+      contract: |
+        resolve(NewsBase $editorial, ResolverContext $context): ResolverResult
+        slot(): ResolverSlot
+        priority(): int
 
     presenter:
       name: "EditorialPresenterInterface"

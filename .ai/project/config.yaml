@@ -26,6 +26,10 @@ architecture:
   layers:
     - name: controller
       path: src/Controller
+    - name: aggregator
+      path: src/Aggregator
+    - name: presenter
+      path: src/Presenter
     - name: application
       path: src/Application
     - name: orchestrator
@@ -52,7 +56,7 @@ conventions:
   file_naming: "PascalCase"
 
 ai_analysis:
-  last_scan: "2026-02-15T22:15:00Z"
+  last_scan: "2026-02-16T12:00:00Z"
   complexity: "high"
   detected_patterns:
     - "chain-of-responsibility"
@@ -60,9 +64,16 @@ ai_analysis:
     - "template-method"
     - "compiler-pass"
     - "anti-corruption-layer"
+    - "plugin-resolver"
+    - "aggregator-presenter"
+    - "two-phase-async"
+    - "scratchpad-context"
   reference_files:
     controller: "snaapi-develop/src/Controller/V1/EditorialController.php"
     orchestrator: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
+    aggregator: "snaapi-develop/src/Aggregator/EditorialAggregator.php"
+    resolver: "snaapi-develop/src/Aggregator/Resolver/SectionResolver.php"
+    presenter: "snaapi-develop/src/Presenter/Apps/AppsEditorialPresenter.php"
     transformer: "snaapi-develop/src/Application/DataTransformer/Apps/Body/ParagraphDataTransformer.php"
 
 workflow:

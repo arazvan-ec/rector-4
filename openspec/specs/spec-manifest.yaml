@@ -1,19 +1,38 @@
 # Auto-generated spec manifest
-# Updated by /workflows:discover --setup on 2026-02-15
+# Updated by /workflows:discover --refresh on 2026-02-16
 
 manifest:
-  version: "1.0"
-  generated_at: "2026-02-15T22:15:00Z"
+  version: "1.1"
+  generated_at: "2026-02-16T12:00:00Z"
   project: "snaapi"
 
   statistics:
-    entities: 0
+    entities: 4
     api_contracts: 1
     business_rules: 1
-    architectural_constraints: 2
-    total_specs: 6
+    architectural_constraints: 4
+    total_specs: 14
 
-  entities: []
+  entities:
+    - name: "ResolvedEditorial"
+      file: "entities/resolved-editorial.yaml"
+      type: "value-object"
+      last_updated: "2026-02-16T12:00:00Z"
+
+    - name: "ResolvedSignature"
+      file: "entities/resolved-signature.yaml"
+      type: "value-object"
+      last_updated: "2026-02-16T12:00:00Z"
+
+    - name: "ResolverSlot"
+      file: "entities/resolver-slot.yaml"
+      type: "enum"
+      last_updated: "2026-02-16T12:00:00Z"
+
+    - name: "ResolverContext"
+      file: "entities/resolver-context.yaml"
+      type: "value-object"
+      last_updated: "2026-02-16T12:00:00Z"
 
   api_contracts:
     - name: "editorial-api"
@@ -24,20 +43,21 @@ manifest:
   business_rules:
     - domain_area: "editorial-aggregation"
       file: "business-rules/editorial-aggregation.yaml"
-      rules_count: 5
+      rules_count: 7
       critical_rules: 2
-      last_updated: "2026-02-15T22:15:00Z"
+      cross_cutting_rules: 2
+      last_updated: "2026-02-16T12:00:00Z"
 
   architectural_constraints:
     - category: "layer-dependencies"
       file: "architectural-constraints/layer-dependencies.yaml"
-      constraints_count: 6
-      last_updated: "2026-02-15T22:15:00Z"
+      constraints_count: 8
+      last_updated: "2026-02-16T12:00:00Z"
     - category: "aggregator-presenter-pattern"
       file: "architectural-constraints/aggregator-presenter-pattern.yaml"
-      constraints_count: 6
+      constraints_count: 7
       type: "mandatory"
-      last_updated: "2026-02-15T22:30:00Z"
+      last_updated: "2026-02-16T12:00:00Z"
     - category: "resilience-strategy"
       file: "architectural-constraints/resilience-strategy.yaml"
       constraints_count: 5
@@ -54,4 +74,4 @@ manifest:
     depth: "standard"
     include_tests: false
 
-  next_recommended_update: "2026-02-22T22:15:00Z"
+  next_recommended_update: "2026-02-23T12:00:00Z"

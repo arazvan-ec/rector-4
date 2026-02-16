@@ -1,0 +1,89 @@
+# Entity Spec: ResolvedEditorial
+# Extracted by /workflows:discover --refresh on 2026-02-16
+
+entity:
+  name: "ResolvedEditorial"
+  type: "value-object"
+  description: "Typed, immutable DTO carrying all aggregated data for a single editorial. Acts as the contract between Aggregator and Presenter layers."
+
+  attributes:
+    - name: "editorial"
+      type: "NewsBase"
+      required: true
+      description: "The core editorial domain object from editorial-client"
+
+    - name: "section"
+      type: "?Section"
+      required: false
+      description: "Section metadata (nullable if section service fails)"
+
+    - name: "tags"
+      type: "Tag[]"
+      required: false
+      description: "Resolved tags from tag-client (fetched in parallel)"
+
+    - name: "signatures"
+      type: "ResolvedSignature[]"
+      required: false
+      description: "Journalist signatures carrying raw domain objects"
+
+    - name: "multimedia"
+      type: "?array<string, mixed>"
+      required: false
+      description: "Multimedia data from multimedia-client (async resolved)"
+
+    - name: "multimediaOpening"
+      type: "?array<string, mixed>"
+      required: false
+      description: "Opening multimedia variant"
+
+    - name: "insertedNews"
+      type: "ResolvedInsertedNews[]"
+      required: false
+      description: "Enriched inserted news from body BodyTagInsertedNews elements"
+
+    - name: "recommendedEditorials"
+      type: "ResolvedRecommendedEditorial[]"
+      required: false
+      description: "Enriched recommended editorial references"
+
+    - name: "photoFromBodyTags"
+      type: "array<string, mixed>"
+      required: false
+      description: "Photos extracted from body tag elements"
+
+    - name: "membershipLinks"
+      type: "array<string, mixed>"
+      required: false
+      description: "Membership links resolved via two-phase async"
+
+    - name: "commentCount"
+      type: "int"
+      required: true
+      description: "Comment count from legacy API"
+
+  relations:
+    - target: "ResolvedSignature"
+      type: "one-to-many"
+      cardinality: "0..*"
+      description: "Each editorial has zero or more journalist signatures"
+
+    - target: "ResolvedInsertedNews"
+      type: "one-to-many"
+      cardinality: "0..*"
+      description: "Each editorial may have inserted news in its body"
+
+    - target: "ResolvedRecommendedEditorial"
+      type: "one-to-many"
+      cardinality: "0..*"
+      description: "Each editorial may reference recommended editorials"
+
+  invariants:
+    - "Must be constructed by ResolvedEditorialBuilder only (via builder pattern)"
+    - "All properties are immutable after construction (final readonly class)"
+    - "No formatting or presentation logic — raw domain objects only"
+
+  source_files:
+    - "snaapi-develop/src/Aggregator/DTO/ResolvedEditorial.php"
+
+  extracted_at: "2026-02-16T12:00:00Z"

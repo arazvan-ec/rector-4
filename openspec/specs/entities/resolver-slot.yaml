@@ -1,0 +1,63 @@
+# Entity Spec: ResolverSlot
+# Extracted by /workflows:discover --refresh on 2026-02-16
+
+entity:
+  name: "ResolverSlot"
+  type: "enum"
+  description: "Backed string enum defining all possible data slots a resolver can fill. Used for typed dispatch in ResolvedEditorialBuilder."
+
+  attributes:
+    - name: "Section"
+      type: "string"
+      value: "section"
+      description: "Section metadata slot"
+
+    - name: "Tags"
+      type: "string"
+      value: "tags"
+      description: "Tags array slot"
+
+    - name: "Signatures"
+      type: "string"
+      value: "signatures"
+      description: "Journalist signatures slot"
+
+    - name: "Multimedia"
+      type: "string"
+      value: "multimedia"
+      description: "Multimedia data slot"
+
+    - name: "InsertedNews"
+      type: "string"
+      value: "insertedNews"
+      description: "Inserted news enrichment slot"
+
+    - name: "RecommendedEditorials"
+      type: "string"
+      value: "recommendedEditorials"
+      description: "Recommended editorials enrichment slot"
+
+    - name: "PhotoFromBodyTags"
+      type: "string"
+      value: "photoFromBodyTags"
+      description: "Photos extracted from body tags slot"
+
+    - name: "MembershipLinks"
+      type: "string"
+      value: "membershipLinks"
+      description: "Membership links slot"
+
+    - name: "CommentCount"
+      type: "string"
+      value: "commentCount"
+      description: "Comment count slot"
+
+  invariants:
+    - "Each resolver declares exactly one slot via static slot() method"
+    - "Adding a new slot requires updating this enum AND ResolvedEditorialBuilder::applyResult()"
+    - "No magic strings — all slot references go through this enum"
+
+  source_files:
+    - "snaapi-develop/src/Aggregator/Resolver/ResolverSlot.php"
+
+  extracted_at: "2026-02-16T12:00:00Z"

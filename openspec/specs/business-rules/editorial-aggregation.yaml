@@ -1,9 +1,10 @@
 # Business Rules: Editorial Aggregation
 # Extracted by /workflows:discover on 2026-02-15
+# Refreshed by /workflows:discover --refresh on 2026-02-16
 
 business_rules:
   domain_area: "editorial-aggregation"
-  description: "Rules governing how editorial content is fetched, aggregated, and transformed"
+  description: "Rules governing how editorial content is fetched, aggregated, and transformed via the plugin-based resolver architecture"
 
   rules:
     - id: "BR-EDIT-001"
@@ -15,8 +16,8 @@ business_rules:
         given: "Editorial exists in editorial service"
         then: "Return editorial only if isVisible() is true, else throw EditorialNotPublishedYetException"
       implementation:
-        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
-        method: "execute"
+        location: "snaapi-develop/src/Aggregator/EditorialAggregator.php"
+        method: "aggregate"
         pattern: "guard-clause"
       priority: "critical"
 
@@ -43,9 +44,10 @@ business_rules:
         given: "Each inserted news has an editorialId"
         then: "Fetch editorial, section, signatures, and multimedia for each inserted news"
       implementation:
-        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
-        method: "execute"
-        pattern: "loop-with-aggregation"
+        location: "snaapi-develop/src/Aggregator/Resolver/InsertedNewsResolverAdapter.php"
+        method: "resolve"
+        delegates_to: "snaapi-develop/src/Aggregator/Service/InsertedNewsResolver.php"
+        pattern: "adapter-delegation"
       exceptions:
         - "Invisible inserted editorials are silently skipped"
       priority: "high"
@@ -59,9 +61,10 @@ business_rules:
         given: "List of EditorialId references"
         then: "Fetch and aggregate each, catch and log errors, continue on failure"
       implementation:
-        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
-        method: "execute"
-        pattern: "loop-with-error-tolerance"
+        location: "snaapi-develop/src/Aggregator/Resolver/RecommendedEditorialsResolverAdapter.php"
+        method: "resolve"
+        delegates_to: "snaapi-develop/src/Aggregator/Service/RecommendedEditorialsResolver.php"
+        pattern: "adapter-delegation"
       exceptions:
         - "Any Throwable is caught, logged, and skipped"
       priority: "high"
@@ -75,9 +78,39 @@ business_rules:
         given: "Multimedia is not a Widget type"
         then: "Fetch async via promises, settle with Utils::settle(), filter fulfilled results"
       implementation:
-        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
-        method: "getAsyncMultimedia, fulfilledMultimedia"
+        location: "snaapi-develop/src/Aggregator/Resolver/MultimediaResolverAdapter.php"
+        method: "resolve"
+        delegates_to: "snaapi-develop/src/Aggregator/Service/MultimediaResolver.php"
         pattern: "promise-aggregation"
+      priority: "medium"
+
+    - id: "BR-EDIT-006"
+      name: "Parallel Tag Resolution"
+      description: "Tags are fetched in parallel using Guzzle promises instead of sequential HTTP calls"
+      type: "workflow"
+      condition:
+        when: "Editorial has tags"
+        given: "Each tag has an ID in the editorial's tag collection"
+        then: "Launch N async findTagById() promises, settle all with Utils::settle(), collect fulfilled results"
+      implementation:
+        location: "snaapi-develop/src/Aggregator/Resolver/TagResolver.php"
+        method: "resolve"
+        pattern: "parallel-promise-aggregation"
+      priority: "medium"
+
+    - id: "BR-EDIT-007"
+      name: "Two-Phase Membership Resolution"
+      description: "Membership links are resolved via a two-phase async pattern to minimize latency"
+      type: "workflow"
+      condition:
+        when: "Editorial needs membership links"
+        given: "Section is resolved (needed to determine site)"
+        then: "Phase 1 (priority 90): MembershipPromiseInitiator fires async HTTP promise. Phase 2 (priority -10): MembershipPromiseCollector awaits the promise and collects result"
+      implementation:
+        location: "snaapi-develop/src/Aggregator/Resolver/MembershipPromiseInitiator.php, MembershipPromiseCollector.php"
+        method: "resolve"
+        pattern: "two-phase-async-via-context"
+        context_key: "membership_promise"
       priority: "medium"
 
   cross_cutting_rules:
@@ -86,11 +119,24 @@ business_rules:
       description: "Journalist signatures are resolved via alias ID across all editorial types"
       affected_areas: ["editorial-detail", "inserted-news", "recommended-editorials"]
       implementation:
-        location: "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
-        method: "retrieveAliasFormat"
+        location: "snaapi-develop/src/Aggregator/Resolver/SignatureResolverAdapter.php"
+        method: "resolve"
+        delegates_to: "snaapi-develop/src/Aggregator/Service/SignatureResolver.php"
+
+    - id: "BR-CROSS-002"
+      name: "Resolver Priority Ordering"
+      description: "All resolvers execute in priority order (highest first), enabling dependency sequencing"
+      affected_areas: ["all-resolvers"]
+      implementation:
+        location: "snaapi-develop/src/Aggregator/EditorialAggregator.php"
+        method: "aggregate"
+        enforced_by: "snaapi-develop/src/DependencyInjection/Compiler/EditorialResolverCompiler.php"
 
   source_files:
     - "snaapi-develop/src/Orchestrator/Chain/EditorialOrchestrator.php"
+    - "snaapi-develop/src/Aggregator/EditorialAggregator.php"
+    - "snaapi-develop/src/Aggregator/Resolver/"
+    - "snaapi-develop/src/Aggregator/Service/"
     - "snaapi-develop/src/Exception/EditorialNotPublishedYetException.php"
 
-  extracted_at: "2026-02-15T22:15:00Z"
+  extracted_at: "2026-02-16T12:00:00Z"

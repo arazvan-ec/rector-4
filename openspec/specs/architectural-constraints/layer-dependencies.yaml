@@ -1,5 +1,6 @@
 # Architectural Constraints: Layer Dependencies
 # Extracted by /workflows:discover on 2026-02-15
+# Refreshed by /workflows:discover --refresh on 2026-02-16
 
 architectural_constraints:
   category: "layer-dependencies"
@@ -13,17 +14,31 @@ architectural_constraints:
       violations_found: 0
 
     - name: "Orchestrator Responsibility"
-      description: "Orchestrators coordinate service calls and transformation"
-      rule: "Orchestrators manage async fetching + transformer delegation"
+      description: "Orchestrators are thin coordinators: aggregator.aggregate() → presenter.present()"
+      rule: "Orchestrators delegate to aggregator and presenter, no direct service calls"
       enforcement: "code-review"
-      violations_found: 1
-      violation_details: "EditorialOrchestrator does too much (SRP violation)"
+      violations_found: 0
+      resolved: "EditorialOrchestrator refactored from 536 LOC/19 deps → 48 LOC/4 deps (Feb 16)"
 
     - name: "Transformer Purity"
       description: "DataTransformers only transform data, no side effects"
       rule: "Transformers receive data and return transformed arrays"
       enforcement: "phpstan"
       violations_found: 0
+
+    - name: "Aggregator Layer Isolation"
+      description: "Aggregators must NOT import from Application/DataTransformer or Presenter layers"
+      rule: "src/Aggregator/ cannot import from src/Application/DataTransformer/ or src/Presenter/"
+      enforcement: "code-review + grep"
+      violations_found: 0
+      verification: "grep -r 'DataTransformer' src/Aggregator/ returns 0 results"
+
+    - name: "Presenter Layer Isolation"
+      description: "Presenters must NOT make calls to external HTTP services"
+      rule: "src/Presenter/ cannot import from Ec\\*\\Infrastructure\\Client\\Http\\"
+      enforcement: "code-review + grep"
+      violations_found: 0
+      verification: "grep -r 'QueryClient\\|Client\\Http' src/Presenter/ returns 0 results"
 
   module_constraints:
     - name: "Bounded Context Isolation"
@@ -61,6 +76,12 @@ architectural_constraints:
       pattern: "strategy"
       anti_patterns: ["If-else chains on element type"]
 
+    - name: "Plugin Resolver Architecture for Aggregation"
+      description: "New data resolvers are added via tagged services + EditorialResolverCompiler"
+      applies_to: "src/Aggregator/Resolver/"
+      pattern: "plugin-resolver"
+      anti_patterns: ["Adding resolution logic directly to EditorialAggregator", "Modifying existing resolvers to add new data sources"]
+
     - name: "Constructor Injection Only"
       description: "All dependencies injected via constructor, no setter injection"
       applies_to: "src/"
@@ -70,7 +91,17 @@ architectural_constraints:
     - name: "Async Multimedia Fetching"
       description: "Multimedia data must be fetched asynchronously to reduce latency"
       threshold: "parallel HTTP requests via Guzzle promises"
-      implementation: "Utils::settle() for promise resolution"
+      implementation: "Utils::settle() in MultimediaResolver"
+
+    - name: "Parallel Tag Resolution"
+      description: "Tags must be fetched in parallel using async promises"
+      threshold: "N tags resolved concurrently, not sequentially"
+      implementation: "Utils::settle() in TagResolver"
+
+    - name: "Two-Phase Async Resolution"
+      description: "Long-running async operations use initiator/collector pattern via ResolverContext"
+      threshold: "Promise fired at high priority, collected at lowest priority"
+      implementation: "MembershipPromiseInitiator (priority 90) + MembershipPromiseCollector (priority -10)"
 
   technology_constraints:
     - name: "PHP Version"
@@ -84,5 +115,6 @@ architectural_constraints:
     - "snaapi-develop/composer.json"
     - "snaapi-develop/CLAUDE.md"
     - "snaapi-develop/src/Kernel.php"
+    - "snaapi-develop/config/packages/aggregator_resolvers.yaml"
 
-  extracted_at: "2026-02-15T22:15:00Z"
+  extracted_at: "2026-02-16T12:00:00Z"
