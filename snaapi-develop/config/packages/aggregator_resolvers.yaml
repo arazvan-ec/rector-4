@@ -1,0 +1,34 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\Aggregator\Resolver\SectionResolver:
+        tags: ['app.aggregator.resolver']
+
+    App\Aggregator\Resolver\MembershipPromiseInitiator:
+        tags: ['app.aggregator.resolver']
+
+    App\Aggregator\Resolver\SignatureResolverAdapter:
+        tags: ['app.aggregator.resolver']
+
+    App\Aggregator\Resolver\InsertedNewsResolverAdapter:
+        tags: ['app.aggregator.resolver']
+
+    App\Aggregator\Resolver\RecommendedEditorialsResolverAdapter:
+        tags: ['app.aggregator.resolver']
+
+    App\Aggregator\Resolver\MultimediaResolverAdapter:
+        tags: ['app.aggregator.resolver']
+
+    App\Aggregator\Resolver\TagResolver:
+        tags: ['app.aggregator.resolver']
+
+    App\Aggregator\Resolver\BodyTagPhotoResolver:
+        tags: ['app.aggregator.resolver']
+
+    App\Aggregator\Resolver\CommentCountResolver:
+        tags: ['app.aggregator.resolver']
+
+    App\Aggregator\Resolver\MembershipPromiseCollector:
+        tags: ['app.aggregator.resolver']
